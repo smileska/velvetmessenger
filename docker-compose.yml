@@ -1,0 +1,50 @@
+version: '3.9'
+
+services:
+    app:
+        build:
+            context: ./
+            dockerfile: Dockerfile
+        container_name: velvetmessenger-app
+        restart: always
+        working_dir: /var/www/
+        volumes:
+            - ./app:/var/www/app
+            - ./public:/var/www/public
+            - ./src:/var/www/src
+            - ./vendor:/var/www/vendor
+            - ./config:/var/www/config
+            - ./uploads:/var/www/uploads
+        depends_on:
+            - db
+
+    db:
+        image: postgres:latest
+        container_name: velvetmessenger-db
+        restart: always
+        environment:
+            POSTGRES_USER: example
+            POSTGRES_PASSWORD: example
+            POSTGRES_DB: example
+        volumes:
+            - db_data:/var/lib/postgresql/data
+            - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+        ports:
+            - "5433:5432"
+
+    nginx:
+        image: nginx:1.19-alpine
+        container_name: velvetmessenger-nginx
+        restart: always
+        ports:
+            - '8000:80'
+        volumes:
+            - ./app:/var/www/app
+            - ./public:/var/www/public
+            - ./src:/var/www/src
+            - ./nginx:/etc/nginx/conf.d
+        depends_on:
+            - app
+
+volumes:
+    db_data:
