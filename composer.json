@@ -30,6 +30,7 @@
         "nyholm/psr7": "^1.8",
         "nyholm/psr7-server": "^1.1",
         "php-di/php-di": "^6.4",
+        "phpmailer/phpmailer": "^6.9",
         "slim/psr7": "^1.7",
         "slim/slim": "^4.10",
         "symfony/validator": "^7.1"

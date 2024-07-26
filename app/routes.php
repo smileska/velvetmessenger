@@ -3,6 +3,8 @@
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Psr\Http\Message\UploadedFileInterface;
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
 
 require __DIR__ . '/../src/Validator/validator.php';
 global $pdo;
@@ -62,21 +64,51 @@ $app->post('/register', function (Request $request, Response $response, $args) u
     }
 
     $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
+    $verificationCode = bin2hex(random_bytes(16)); // verification code
 
     try {
-        $stmt = $pdo->prepare("INSERT INTO users (username, password, email, image, status) VALUES (:username, :password, :email, :image, :status)");
+        $stmt = $pdo->prepare("INSERT INTO users (username, password, email, image, status, verification_code) VALUES (:username, :password, :email, :image, :status, :verification_code)");
         $stmt->execute([
             'username' => $username,
             'password' => $hashedPassword,
             'email' => $email,
             'image' => $imagePath,
-            'status' => 'Online'
+            'status' => 'Online',
+            'verification_code' => $verificationCode
         ]);
-        $_SESSION['username'] = $username;
-        $_SESSION['image'] = $imagePath;
-        $html = view("index.view.php", ['username' => $username]);
+
+        // ovde se prajcha (ne se prajchca lol)
+        $mail = new PHPMailer(true);
+        try {
+            // server
+            $mail->isSMTP();                                            // send using SMTP
+            $mail->Host       = 'smtp.gmail.com';                       // set the SMTP server to send through
+            $mail->SMTPAuth   = true;                                   // enable SMTP authentication
+            $mail->Username   = 'velvetmessenger@gmail.com';                 // SMTP username
+            $mail->Password   = 'pasvortakaunt123_';                  // SMTP password
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;         // enable TLS encryption;
+            $mail->Port       = 587;                                    // TCP port to connect to
+
+            // recipients
+            $mail->setFrom('velvetmessenger@gmail.com', 'Velvet Messenger');
+            $mail->addAddress($email);
+
+            // content
+            $mail->isHTML(true);                                        // html format na mail
+            $mail->Subject = 'Email Verification';
+            // $mail->Body    = 'Click <a href="http://yourdomain.com/verify-email?code=' . $verificationCode . '">here</a> to verify your email address.';
+
+            $mail->send();
+        } catch (Exception $e) {
+            $errors[] = 'Error sending verification email: ' . $mail->ErrorInfo;
+            $html = view('register.view.php', ['errors' => $errors]);
+            $response->getBody()->write($html);
+            return $response->withStatus(500);
+        }
+
+        $html = view('check-email.view.php');
         $response->getBody()->write($html);
-        return $response->withStatus(201);
+        return $response->withStatus(200);
     } catch (PDOException $e) {
         $response->getBody()->write("Error: " . $e->getMessage());
         return $response->withStatus(500);
@@ -95,6 +127,7 @@ $app->post('/login', function (Request $request, Response $response, $args) use 
     $html = view('index.view.php');
     $username = $parsedBody['username'] ?? null;
     $password = $parsedBody['password'] ?? null;
+
     if ($username === null || $password === null) {
         $errors = "Please enter username and password";
         $html = view('login.view.php', ['errors' => $errors]);
@@ -116,7 +149,6 @@ $app->post('/login', function (Request $request, Response $response, $args) use 
     $stmt = $pdo->prepare('SELECT * FROM users WHERE username = :username');
     $stmt->execute(['username' => $username]);
     $user = $stmt->fetch();
-
     if ($user && password_verify($password, $user['password'])) {
         $_SESSION['username'] = $username;
         $_SESSION['image'] = $user['image'];
@@ -280,6 +312,33 @@ $app->post('/send-message', function (Request $request, Response $response, $arg
         $stmt = $pdo->prepare('INSERT INTO messages (sender, recipient, message) VALUES (:sender, :recipient, :message)');
         $stmt->execute(['sender' => $sender, 'recipient' => $recipient, 'message' => $message]);
         return $response->withHeader('Location', '/chat/' . $recipient)->withStatus(302);
+    } catch (PDOException $e) {
+        $response->getBody()->write("Error: " . $e->getMessage());
+        return $response->withStatus(500);
+    }
+});
+
+$app->get('/verify-email', function (Request $request, Response $response, $args) use ($pdo) {
+    $code = $request->getQueryParams()['code'] ?? null;
+
+    if (!$code) {
+        return $response->withStatus(400)->write('Verification code is missing.');
+    }
+
+    try {
+        $stmt = $pdo->prepare('SELECT * FROM users WHERE verification_code = :verification_code');
+        $stmt->execute(['verification_code' => $code]);
+        $user = $stmt->fetch();
+
+        if ($user) {
+            $stmt = $pdo->prepare('UPDATE users SET is_verified = TRUE, verification_code = NULL WHERE verification_code = :verification_code');
+            $stmt->execute(['verification_code' => $code]);
+            $html = view('email-verified.view.php');
+            $response->getBody()->write($html);
+            return $response;
+        } else {
+            return $response->withStatus(400)->write('Invalid verification code.');
+        }
     } catch (PDOException $e) {
         $response->getBody()->write("Error: " . $e->getMessage());
         return $response->withStatus(500);

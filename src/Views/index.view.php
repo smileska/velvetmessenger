@@ -18,7 +18,7 @@
             <?php if (!empty($users)) : ?>
                 <h2 class="text-xl mt-6 found-users">Search Results for "<?= htmlspecialchars($searchQuery) ?>"</h2>
                 <ul class="search-results">
-                    <?php foreach ($users as $user) : ?>  <!-- Ova treba da se refaktorira, unique se usernames -->
+                    <?php foreach ($users as $user) : ?>
                         <li class="search-result">
                             <img src="<?= htmlspecialchars($user['image']) ?>" alt="<?= htmlspecialchars($user['username']) ?>" class="search-result-img">
                             <a href="/chat/<?= htmlspecialchars($user['username']) ?>" class="search-result-link"><?= htmlspecialchars($user['username']) ?></a>

@@ -12,21 +12,10 @@ function base_path($path) {
 function view($path, $data = []) {
     extract($data);
     ob_start();
-    $fullPath = base_path('src/Views/' . $path); // Corrected path
+    $fullPath = base_path('src/Views/' . $path);
     if (!file_exists($fullPath)) {
-        echo "View file not found: " . $fullPath; // Debug output
-        return ''; // Return empty string or handle error gracefully
-    }
-    include $fullPath;
-    return ob_get_clean();
-}
-function viewIMG($path, $data = []) {
-    extract($data);
-    ob_start();
-    $fullPath = base_path('ui/icons/' . $path); // Corrected path
-    if (!file_exists($fullPath)) {
-        echo "View file not found: " . $fullPath; // Debug output
-        return ''; // Return empty string or handle error gracefully
+        echo "View file not found: " . $fullPath;
+        return '';
     }
     include $fullPath;
     return ob_get_clean();
