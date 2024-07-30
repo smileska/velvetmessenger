@@ -1,50 +1,75 @@
-version: '3.9'
+    version: '3.9'
 
-services:
-    app:
-        build:
-            context: ./
-            dockerfile: Dockerfile
-        container_name: velvetmessenger-app
-        restart: always
-        working_dir: /var/www/
-        volumes:
-            - ./app:/var/www/app
-            - ./public:/var/www/public
-            - ./src:/var/www/src
-            - ./vendor:/var/www/vendor
-            - ./config:/var/www/config
-            - ./uploads:/var/www/uploads
-        depends_on:
-            - db
+    services:
+        app:
+            build:
+                context: ./
+                dockerfile: Dockerfile
+            container_name: velvetmessenger-app
+            restart: always
+            working_dir: /var/www/
+            volumes:
+                - ./app:/var/www/app
+                - ./public:/var/www/public
+                - ./src:/var/www/src
+                - ./vendor:/var/www/vendor
+                - ./config:/var/www/config
+                - ./uploads:/var/www/uploads
+                - ./sessions:/var/www/sessions
+            depends_on:
+                - db
+                - mailhog
+            ports:
+                - "8080:8080"
 
-    db:
-        image: postgres:latest
-        container_name: velvetmessenger-db
-        restart: always
-        environment:
-            POSTGRES_USER: example
-            POSTGRES_PASSWORD: example
-            POSTGRES_DB: example
-        volumes:
-            - db_data:/var/lib/postgresql/data
-            - ./init.sql:/docker-entrypoint-initdb.d/init.sql
-        ports:
-            - "5433:5432"
+        db:
+            image: postgres:latest
+            container_name: velvetmessenger-db
+            restart: always
+            environment:
+                POSTGRES_USER: example
+                POSTGRES_PASSWORD: example
+                POSTGRES_DB: example
+            volumes:
+                - db_data:/var/lib/postgresql/data
+                - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+            ports:
+                - "5433:5432"
 
-    nginx:
-        image: nginx:1.19-alpine
-        container_name: velvetmessenger-nginx
-        restart: always
-        ports:
-            - '8000:80'
-        volumes:
-            - ./app:/var/www/app
-            - ./public:/var/www/public
-            - ./src:/var/www/src
-            - ./nginx:/etc/nginx/conf.d
-        depends_on:
-            - app
+        nginx:
+            image: nginx:1.19-alpine
+            container_name: velvetmessenger-nginx
+            restart: always
+            ports:
+                - '8000:80'
+            volumes:
+                - ./app:/var/www/app
+                - ./public:/var/www/public
+                - ./src:/var/www/src
+                - ./nginx:/etc/nginx/conf.d
+            depends_on:
+                - app
 
-volumes:
-    db_data:
+        mailhog:
+            image: mailhog/mailhog
+            container_name: velvetmessenger-mailhog
+            restart: always
+            ports:
+                - '8025:8025'
+                - '1025:1025'
+        chat:
+            build:
+                context: ./
+                dockerfile: Dockerfile
+            container_name: velvetmessenger-chat
+            restart: always
+            working_dir: /var/www/
+            volumes:
+                - ./:/var/www/
+            depends_on:
+                - db
+            command: php chat-server.php
+
+
+    volumes:
+        db_data:
