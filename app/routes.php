@@ -530,3 +530,66 @@ $app->get('/chatroom/{id}/messages', function (Request $request, Response $respo
     return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
 });
 
+$app->post('/update-username', function (Request $request, Response $response, $args) use ($pdo) {
+    $parsedBody = $request->getParsedBody();
+    $newUsername = $parsedBody['new_username'] ?? '';
+    $password = $parsedBody['password_for_username'] ?? '';
+
+    if (!isset($_SESSION['user_id'])) {
+        return $response->withHeader('Location', '/login')->withStatus(302);
+    }
+
+    $userId = $_SESSION['user_id'];
+
+    $stmt = $pdo->prepare('SELECT password FROM users WHERE id = :id');
+    $stmt->execute(['id' => $userId]);
+    $user = $stmt->fetch();
+
+    if (!$user || !password_verify($password, $user['password'])) {
+        $html = view('profile.view.php', ['error' => 'Incorrect password']);
+        $response->getBody()->write($html);
+        return $response->withStatus(400);
+    }
+
+    $stmt = $pdo->prepare('UPDATE users SET username = :username WHERE id = :id');
+    $stmt->execute(['username' => $newUsername, 'id' => $userId]);
+
+    $_SESSION['username'] = $newUsername;
+
+    return $response->withHeader('Location', '/profile')->withStatus(302);
+});
+
+$app->post('/update-password', function (Request $request, Response $response, $args) use ($pdo) {
+    $parsedBody = $request->getParsedBody();
+    $currentPassword = $parsedBody['current_password'] ?? '';
+    $newPassword = $parsedBody['new_password'] ?? '';
+    $confirmNewPassword = $parsedBody['confirm_new_password'] ?? '';
+
+    if (!isset($_SESSION['user_id'])) {
+        return $response->withHeader('Location', '/login')->withStatus(302);
+    }
+
+    $userId = $_SESSION['user_id'];
+
+    $stmt = $pdo->prepare('SELECT password FROM users WHERE id = :id');
+    $stmt->execute(['id' => $userId]);
+    $user = $stmt->fetch();
+
+    if (!$user || !password_verify($currentPassword, $user['password'])) {
+        $html = view('profile.view.php', ['error' => 'Incorrect current password']);
+        $response->getBody()->write($html);
+        return $response->withStatus(400);
+    }
+
+    if ($newPassword !== $confirmNewPassword) {
+        $html = view('profile.view.php', ['error' => 'New password and confirmation do not match']);
+        $response->getBody()->write($html);
+        return $response->withStatus(400);
+    }
+
+    $hashedNewPassword = password_hash($newPassword, PASSWORD_BCRYPT);
+    $stmt = $pdo->prepare('UPDATE users SET password = :password WHERE id = :id');
+    $stmt->execute(['password' => $hashedNewPassword, 'id' => $userId]);
+
+    return $response->withHeader('Location', '/profile')->withStatus(302);
+});
