@@ -55,6 +55,7 @@ $app->post('/register', function (Request $request, Response $response, $args) u
 
     $username = $parsedBody['username'] ?? null;
     $password = $parsedBody['password'] ?? null;
+    $confirm_password = $parsedBody['confirm_password'] ?? null;
     $email = $parsedBody['email'] ?? null;
     $image = $uploadedFiles['image'] ?? null;
     $imagePath = 'ui/icons/default.png';
@@ -74,7 +75,7 @@ $app->post('/register', function (Request $request, Response $response, $args) u
         }
     }
 
-    $violations = validateUserData($username, $email, $password);
+    $violations = validateUserData($username, $email, $password, $confirm_password);
     if (count($violations) > 0) {
         $messages = [];
         foreach ($violations as $violation) {

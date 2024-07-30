@@ -42,10 +42,24 @@
                 <div class="text-sm"></div>
             </div>
             <div class="mt-2 relative input-container">
-                <input id="password" name="password" type="password" autocomplete="current-password" required class="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6">
-                <button type="button" class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-600" onclick="togglePasswordVisibility()">
+                <input id="password" name="password" type="password" autocomplete="new-password" required class="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6">
+                <button type="button" class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-600" onclick="togglePasswordVisibility('password', 'eye-icon-open', 'eye-icon-closed')">
                     <i id="eye-icon-open" class="fas fa-eye"></i>
                     <i id="eye-icon-closed" class="fas fa-eye-slash hidden"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="form-item">
+            <div class="flex items-center justify-between">
+                <label for="confirm_password" class="form-label">Confirm Password</label>
+                <div class="text-sm"></div>
+            </div>
+            <div class="mt-2 relative input-container">
+                <input id="confirm_password" name="confirm_password" type="password" autocomplete="new-password" required class="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6">
+                <button type="button" class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-600" onclick="togglePasswordVisibility('confirm_password', 'eye-icon-open-confirm', 'eye-icon-closed-confirm')">
+                    <i id="eye-icon-open-confirm" class="fas fa-eye"></i>
+                    <i id="eye-icon-closed-confirm" class="fas fa-eye-slash hidden"></i>
                 </button>
             </div>
         </div>
@@ -67,10 +81,10 @@
 </div>
 
 <script>
-    function togglePasswordVisibility() {
-        var passwordInput = document.getElementById('password');
-        var eyeIconOpen = document.getElementById('eye-icon-open');
-        var eyeIconClosed = document.getElementById('eye-icon-closed');
+    function togglePasswordVisibility(inputId, openIconId, closedIconId) {
+        var passwordInput = document.getElementById(inputId);
+        var eyeIconOpen = document.getElementById(openIconId);
+        var eyeIconClosed = document.getElementById(closedIconId);
 
         if (passwordInput.type === 'password') {
             passwordInput.type = 'text';
@@ -83,4 +97,3 @@
         }
     }
 </script>
-</html>

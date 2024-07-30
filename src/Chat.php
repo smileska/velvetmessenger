@@ -27,23 +27,43 @@ class Chat implements MessageComponentInterface {
         $data = json_decode($msg, true);
 
         if (isset($data['type']) && $data['type'] === 'message') {
-            $stmt = $this->pdo->prepare('INSERT INTO chatroom_messages (chatroom_id, user_id, message) VALUES (:chatroom_id, :user_id, :message)');
-            $stmt->execute([
-                'chatroom_id' => $data['chatroom_id'],
-                'user_id' => $data['sender_id'],
-                'message' => $data['message']
-            ]);
+            // This is a chatroom message
+            $this->handleChatroomMessage($data);
+        } elseif (isset($data['sender']) && isset($data['recipient']) && isset($data['message'])) {
+            // This is a private message
+            $this->handlePrivateMessage($data);
         } else {
-            $stmt = $this->pdo->prepare('INSERT INTO messages (sender, recipient, message) VALUES (:sender, :recipient, :message)');
-            $stmt->execute([
-                'sender' => $data['sender'],
-                'recipient' => $data['recipient'],
-                'message' => $data['message']
-            ]);
+            echo "Invalid message format received\n";
+            return;
         }
+
+        // Broadcast the message to all connected clients
         foreach ($this->clients as $client) {
             $client->send($msg);
         }
+    }
+
+    private function handleChatroomMessage($data) {
+        if (!isset($data['chatroom_id']) || !isset($data['sender_id']) || !isset($data['message'])) {
+            echo "Invalid chatroom message format\n";
+            return;
+        }
+
+        $stmt = $this->pdo->prepare('INSERT INTO chatroom_messages (chatroom_id, user_id, message) VALUES (:chatroom_id, :user_id, :message)');
+        $stmt->execute([
+            'chatroom_id' => $data['chatroom_id'],
+            'user_id' => $data['sender_id'],
+            'message' => $data['message']
+        ]);
+    }
+
+    private function handlePrivateMessage($data) {
+        $stmt = $this->pdo->prepare('INSERT INTO messages (sender, recipient, message) VALUES (:sender, :recipient, :message)');
+        $stmt->execute([
+            'sender' => $data['sender'],
+            'recipient' => $data['recipient'],
+            'message' => $data['message']
+        ]);
     }
 
     public function onClose(ConnectionInterface $conn) {

@@ -7,7 +7,7 @@ require('parts/navbar.php');
     <div class="container-chat">
         <h1 class="text-3xl font-bold tracking-tight text-gray-900">Chat with <?= htmlspecialchars($chatUser['username']); ?></h1>
         <div id="chat-box" class="chat-box h-96 overflow-y-scroll border border-gray-300 p-4 bg-white rounded-lg shadow-sm">
-            <!-- poraki -->
+            <!-- Messages will be appended here -->
         </div>
 
         <form method="post" id="chat-form" class="mt-4 flex">
@@ -64,6 +64,7 @@ require('parts/navbar.php');
         const chatBox = document.getElementById('chat-box');
         const recipient = document.getElementById('recipient').value;
 
+        // Fetch previous messages
         fetch(`/get-messages/${recipient}`)
             .then(response => response.json())
             .then(messages => {

@@ -35,7 +35,7 @@ require('parts/navbar.php');
         <div class="mt-4">
             <h3 class="text-xl font-bold mb-2">Chatroom Users</h3>
             <ul id="chatroom-users-list" class="list-disc pl-5">
-                <!-- useri -->
+                <!-- korisnici -->
             </ul>
         </div>
     </div>
@@ -47,17 +47,12 @@ require('parts/navbar.php');
 
     conn.onopen = function(e) {
         console.log("Connection established!");
-        conn.send(JSON.stringify({
-            type: 'join',
-            chatroom_id: chatroomId,
-            user_id: '<?= htmlspecialchars($_SESSION['user_id']); ?>'
-        }));
     };
 
     conn.onmessage = function(e) {
         console.log("Received message:", e.data);
         const messageData = JSON.parse(e.data);
-        if (messageData.type === 'message' && messageData.chatroom_id == chatroomId) {
+        if (messageData.chatroom_id == chatroomId) {
             const chatBox = document.getElementById('chat-box');
             const messageElement = createMessageElement(messageData);
             chatBox.appendChild(messageElement);
@@ -85,28 +80,11 @@ require('parts/navbar.php');
             type: 'message',
             chatroom_id: chatroomId,
             sender_id: '<?= htmlspecialchars($_SESSION['user_id']); ?>',
-            sender_name: '<?= htmlspecialchars($_SESSION['username']); ?>',
             message: message
         });
 
         conn.send(messageData);
         messageInput.value = '';
-    });
-
-    document.addEventListener('DOMContentLoaded', function() {
-        const chatBox = document.getElementById('chat-box');
-
-        fetch(`/chatroom/${chatroomId}/messages`)
-            .then(response => response.json())
-            .then(messages => {
-                messages.forEach(message => {
-                    const messageElement = createMessageElement(message);
-                    chatBox.appendChild(messageElement);
-                });
-                chatBox.scrollTop = chatBox.scrollHeight;
-            });
-
-        fetchAndDisplayChatroomUsers();
     });
 
     function createMessageElement(messageData) {
