@@ -31,4 +31,5 @@ $GLOBALS['pdo'] = $pdo;
 
 require __DIR__ . '/../functions.php';
 
+
 return $app;
