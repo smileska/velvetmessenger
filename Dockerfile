@@ -6,7 +6,9 @@ RUN apt-get update && apt-get install -y \
     zip \
     unzip \
     libpq-dev \
-    && docker-php-ext-install pdo pdo_pgsql
+    && docker-php-ext-install pdo pdo_pgsql sockets
+
+RUN pecl install ev && docker-php-ext-enable ev
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 

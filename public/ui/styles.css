@@ -95,9 +95,26 @@ body.dark-mode {
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     padding: 20px;
-    width: 100%;
-    max-width: 100%;
-    margin: 60px auto;
+    width: 50%;
+    max-width: 50%;
+    margin: 30px auto;
+}
+.dark-mode .container {
+    background-color: #26204c;
+    border: 1px solid #1b1635;
+    color: #f7fafc;
+}
+.dark-mode .container li {
+    background-color: #362e6c;
+    border: 1px solid #261f4a;
+}
+.dark-mode .container input {
+    background-color: #362e6c;
+    border: 1px solid #261f4a;
+}
+.dark-mode .container .chatrooms-list {
+    background-color: #362e6c;
+    border: 1px solid #261f4a;
 }
 .container img {
     width: 40px;
@@ -109,10 +126,23 @@ body.dark-mode {
 .container h2 {
     font-size: 1.5em;
     margin-bottom: 10px;
+    /*margin-left: 260px;*/
 }
 .container p {
     color: rgba(102, 102, 102, 0.98);
     margin-bottom: 20px;
+}
+.moving{
+    margin-left: 70px;
+}
+.moving-2{
+    margin-left: 80px;
+}
+.container h3{
+    margin-left: 55px;
+}
+.container span {
+    margin-right: 20px;
 }
 .link {
     color: #8c52ff;
@@ -271,4 +301,73 @@ body.dark-mode {
 }
 .form-label {
     align-self: flex-start;
+}
+
+.chat-box {
+    max-height: 400px;
+    width: 400px;
+    overflow-y: auto;
+}
+.container-chat {
+    background-color: #f1f2ff;
+    border: 1px solid #ddd;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 20px;
+    width: 70%;
+    max-width: 70%;
+    margin: 60px auto;
+}
+.container-chat h1{
+    margin-bottom: 15px;
+}
+.dark-mode .container-chat {
+    background-color: #26204c;
+    border: 1px solid #1b1635;
+    color: #f7fafc;
+}
+.dark-mode .container-chat li {
+    background-color: #362e6c;
+    border: 1px solid #261f4a;
+}
+.dark-mode .container-chat h1{
+    color: white;
+}
+.dark-mode .container-chat input {
+    background-color: #362e6c;
+    border: 1px solid #261f4a;
+}
+.dark-mode .chat-box {
+    background-color: #362e6c;
+    border: 1px solid #261f4a;
+}
+.dark-mode .chat-box .self-end div {
+    background-color: #23107e;
+}
+.message-input{
+    display: block;
+}
+body.dark-mode .bg-gray-100 {
+    background-color: #2a2a3c;
+}
+
+body.dark-mode .bg-blue-100 {
+    background-color: #180047;
+}
+.bg-gray-100 {
+    background-color: #e1e1e1;
+}
+
+.bg-blue-100 {
+    background-color: #dfd4ff;
+}
+.chatroom {
+    transition: background-color 0.1ms ease, color 0.1ms ease;
+}
+.bg-violet-900{
+    background-color: #362e6c;
 }
