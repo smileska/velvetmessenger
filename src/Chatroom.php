@@ -38,10 +38,14 @@ class Chatroom
     }
 
 
-    public function removeUser($chatroomId, $userId)
-    {
-        $stmt = $this->pdo->prepare("DELETE FROM chatroom_users WHERE chatroom_id = :chatroom_id AND user_id = :user_id");
-        return $stmt->execute(['chatroom_id' => $chatroomId, 'user_id' => $userId]);
+    public function removeUser($chatroomId, $userId) {
+        try {
+            $stmt = $this->pdo->prepare('DELETE FROM chatroom_users WHERE chatroom_id = :chatroom_id AND user_id = :user_id');
+            return $stmt->execute(['chatroom_id' => $chatroomId, 'user_id' => $userId]);
+        } catch (PDOException $e) {
+            error_log('Error removing user from chatroom: ' . $e->getMessage());
+            return false;
+        }
     }
 
 //    public function grantAdminRights($chatroomId, $userId)
