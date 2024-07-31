@@ -528,29 +528,48 @@ $app->get('/chatroom/{id}/users', function (Request $request, Response $response
     return $response->withHeader('Content-Type', 'application/json');
 });
 
+
 $app->post('/chatroom/{id}/remove-user', function (Request $request, Response $response, $args) use ($pdo) {
     $chatroomId = $args['id'];
     $data = $request->getParsedBody();
-    $username = $data['username'];
+    $username = $data['username'] ?? null;
 
-    $stmt = $pdo->prepare('SELECT id FROM users WHERE username = :username');
-    $stmt->execute(['username' => $username]);
-    $userId = $stmt->fetchColumn();
+    error_log("Attempting to remove user from chatroom. Data: " . json_encode($data));
 
-    if (!$userId) {
-        $response->getBody()->write(json_encode(['message' => 'User not found']));
-        return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
-    }
+    try {
+        if (!$username) {
+            throw new Exception("Username is missing from request");
+        }
 
-    $chatroom = new Chatroom($pdo);
-    $result = $chatroom->removeUser($chatroomId, $userId);
+        $stmt = $pdo->prepare('SELECT id FROM users WHERE username = :username');
+        $stmt->execute(['username' => $username]);
+        $userId = $stmt->fetchColumn();
 
-    if ($result) {
+        if (!$userId) {
+            throw new Exception("User not found: $username");
+        }
+
+        $chatroom = new Chatroom($pdo);
+        $result = $chatroom->removeUser($chatroomId, $userId);
+
+        if (!$result) {
+            throw new Exception("Failed to remove user: $username from chatroom: $chatroomId");
+        }
+
+        error_log("User removed successfully: $username from chatroom: $chatroomId");
+
         $response->getBody()->write(json_encode(['message' => 'User removed successfully']));
         return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
-    } else {
-        $response->getBody()->write(json_encode(['message' => 'Failed to remove user']));
-        return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+
+    } catch (Exception $e) {
+        error_log("Exception in remove-user route: " . $e->getMessage());
+        error_log("Stack trace: " . $e->getTraceAsString());
+
+        $response->getBody()->write(json_encode([
+            'message' => 'An error occurred while processing your request',
+            'error' => $e->getMessage()
+        ]));
+        return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
     }
 });
 
