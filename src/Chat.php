@@ -27,17 +27,14 @@ class Chat implements MessageComponentInterface {
         $data = json_decode($msg, true);
 
         if (isset($data['type']) && $data['type'] === 'message') {
-            // This is a chatroom message
-            $this->handleChatroomMessage($data);
+            $msg = $this->handleChatroomMessage($data);
         } elseif (isset($data['sender']) && isset($data['recipient']) && isset($data['message'])) {
-            // This is a private message
             $this->handlePrivateMessage($data);
         } else {
             echo "Invalid message format received\n";
             return;
         }
 
-        // Broadcast the message to all connected clients
         foreach ($this->clients as $client) {
             $client->send($msg);
         }
@@ -49,12 +46,20 @@ class Chat implements MessageComponentInterface {
             return;
         }
 
+        $stmt = $this->pdo->prepare('SELECT username FROM users WHERE id = :user_id');
+        $stmt->execute(['user_id' => $data['sender_id']]);
+        $sender = $stmt->fetch(PDO::FETCH_ASSOC);
+
         $stmt = $this->pdo->prepare('INSERT INTO chatroom_messages (chatroom_id, user_id, message) VALUES (:chatroom_id, :user_id, :message)');
         $stmt->execute([
             'chatroom_id' => $data['chatroom_id'],
             'user_id' => $data['sender_id'],
             'message' => $data['message']
         ]);
+
+        $data['username'] = $sender['username'];
+
+        return json_encode($data);
     }
 
     private function handlePrivateMessage($data) {
