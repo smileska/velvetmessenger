@@ -31,10 +31,12 @@ class Chatroom
         if ($stmt->fetch()) {
             return false;
         }
+        $isAdminValue = $isAdmin ? 1 : 0;
 
         $stmt = $this->pdo->prepare("INSERT INTO chatroom_users (chatroom_id, user_id, is_admin) VALUES (:chatroom_id, :user_id, :is_admin)");
-        return $stmt->execute(['chatroom_id' => $chatroomId, 'user_id' => $userId, 'is_admin' => $isAdmin]);
+        return $stmt->execute(['chatroom_id' => $chatroomId, 'user_id' => $userId, 'is_admin' => $isAdminValue]);
     }
+
 
     public function removeUser($chatroomId, $userId)
     {
@@ -83,6 +85,13 @@ class Chatroom
         $stmt = $this->pdo->prepare("INSERT INTO chatroom_messages (chatroom_id, user_id, message) VALUES (:chatroom_id, :user_id, :message)");
         return $stmt->execute(['chatroom_id' => $chatroomId, 'user_id' => $userId, 'message' => $message]);
     }
+
+    public function getChatroomData($chatroomId)
+    {
+        $stmt = $this->pdo->prepare("SELECT * FROM chatrooms WHERE id = :id");
+        $stmt->execute(['id' => $chatroomId]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
     public function getUserChatrooms($userId)
     {
         $stmt = $this->pdo->prepare("
@@ -93,12 +102,5 @@ class Chatroom
     ");
         $stmt->execute(['user_id' => $userId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
-
-    public function getChatroomData($chatroomId)
-    {
-        $stmt = $this->pdo->prepare("SELECT * FROM chatrooms WHERE id = :id");
-        $stmt->execute(['id' => $chatroomId]);
-        return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 }
