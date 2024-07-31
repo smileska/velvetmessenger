@@ -35,8 +35,14 @@ $app->get('/get-previous-messages', function (Request $request, Response $respon
     $stmt->execute(['sender' => $sender, 'recipient' => $recipient]);
     $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    return $response->withJson($messages);
+    $payload = json_encode($messages);
+
+    $response->getBody()->write($payload);
+    return $response
+        ->withHeader('Content-Type', 'application/json')
+        ->withStatus(200);
 });
+
 $app->get('/get-messages/{recipient}', function (Request $request, Response $response, $args) use ($pdo) {
     $sender = $_SESSION['username'];
     $recipient = $args['recipient'];
@@ -207,7 +213,7 @@ $app->post('/login', function (Request $request, Response $response, $args) use 
     $user = $stmt->fetch();
 
     if ($user && password_verify($password, $user['password'])) {
-        $_SESSION['user_id'] = $user['id'];  // Add this line
+        $_SESSION['user_id'] = $user['id'];
         $_SESSION['username'] = $username;
         $_SESSION['image'] = $user['image'];
         $stmt = $pdo->prepare('UPDATE users SET status = \'Online\' WHERE username = :username');
@@ -334,16 +340,23 @@ $app->post('/send-message', function (Request $request, Response $response, $arg
     $sender = $_SESSION['username'];
     $recipient = $parsedBody['recipient'] ?? '';
     $message = $parsedBody['message'] ?? '';
+    $chatroomId = $parsedBody['chatroom_id'] ?? null;
 
-    if (empty($recipient) || empty($message)) {
-        $response->getBody()->write('Recipient and message are required.');
+    if (empty($message) || (empty($recipient) && empty($chatroomId))) {
+        $response->getBody()->write('Recipient or chatroom and message are required.');
         return $response->withStatus(400);
     }
 
     try {
-        $stmt = $pdo->prepare('INSERT INTO messages (sender, recipient, message) VALUES (:sender, :recipient, :message)');
-        $stmt->execute(['sender' => $sender, 'recipient' => $recipient, 'message' => $message]);
-        return $response->withHeader('Location', '/chat/' . $recipient)->withStatus(302);
+        if ($chatroomId) {
+            $stmt = $pdo->prepare('INSERT INTO chatroom_messages (chatroom_id, sender, message) VALUES (:chatroom_id, :sender, :message)');
+            $stmt->execute(['chatroom_id' => $chatroomId, 'sender' => $sender, 'message' => $message]);
+            return $response->withHeader('Location', '/chatroom/' . $chatroomId)->withStatus(302);
+        } else {
+            $stmt = $pdo->prepare('INSERT INTO messages (sender, recipient, message) VALUES (:sender, :recipient, :message)');
+            $stmt->execute(['sender' => $sender, 'recipient' => $recipient, 'message' => $message]);
+            return $response->withHeader('Location', '/chat/' . $recipient)->withStatus(302);
+        }
     } catch (PDOException $e) {
         $response->getBody()->write("Error: " . $e->getMessage());
         return $response->withStatus(500);
@@ -456,27 +469,63 @@ $app->get('/chat/{username}', function (Request $request, Response $response, $a
 $app->post('/chatroom/{id}/add-user', function (Request $request, Response $response, $args) use ($pdo) {
     $chatroomId = $args['id'];
     $data = $request->getParsedBody();
-    $username = $data['username'];
+    $username = $data['username'] ?? null;
 
-    $stmt = $pdo->prepare('SELECT id FROM users WHERE username = :username');
-    $stmt->execute(['username' => $username]);
-    $userId = $stmt->fetchColumn();
+    error_log("Attempting to add user to chatroom. Data: " . json_encode($data));
 
-    if (!$userId) {
-        $response->getBody()->write(json_encode(['success' => false, 'message' => 'User not found']));
-        return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
-    }
+    try {
+        if (!$username) {
+            throw new Exception("Username is missing from request");
+        }
 
-    $chatroom = new Chatroom($pdo);
-    $result = $chatroom->addUser($chatroomId, $userId);
+        $stmt = $pdo->prepare('SELECT id FROM users WHERE username = :username');
+        $stmt->execute(['username' => $username]);
+        $userId = $stmt->fetchColumn();
 
-    if ($result) {
-        $response->getBody()->write(json_encode(['success' => true, 'message' => 'User added successfully']));
+        if (!$userId) {
+            throw new Exception("User not found: $username");
+        }
+
+        $chatroom = new Chatroom($pdo);
+        $result = $chatroom->addUser($chatroomId, $userId);
+
+        if (!$result) {
+            throw new Exception("Failed to add user: $username to chatroom: $chatroomId");
+        }
+
+        error_log("User added successfully: $username to chatroom: $chatroomId");
+
+        $response->getBody()->write(json_encode(['message' => 'User added successfully']));
         return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
-    } else {
-        $response->getBody()->write(json_encode(['success' => false, 'message' => 'Failed to add user or user already in chatroom']));
-        return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+
+    } catch (Exception $e) {
+        error_log("Exception in add-user route: " . $e->getMessage());
+        error_log("Stack trace: " . $e->getTraceAsString());
+
+        $response->getBody()->write(json_encode([
+            'message' => 'An error occurred while processing your request',
+            'error' => $e->getMessage()
+        ]));
+        return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
     }
+});
+
+
+
+$app->get('/chatroom/{id}/users', function (Request $request, Response $response, $args) use ($pdo) {
+    $chatroomId = $args['id'];
+
+    $stmt = $pdo->prepare('
+        SELECT u.username 
+        FROM chatroom_users cu 
+        JOIN users u ON cu.user_id = u.id 
+        WHERE cu.chatroom_id = :chatroom_id
+    ');
+    $stmt->execute(['chatroom_id' => $chatroomId]);
+    $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $response->getBody()->write(json_encode($users));
+    return $response->withHeader('Content-Type', 'application/json');
 });
 
 $app->post('/chatroom/{id}/remove-user', function (Request $request, Response $response, $args) use ($pdo) {
@@ -593,3 +642,4 @@ $app->post('/update-password', function (Request $request, Response $response, $
 
     return $response->withHeader('Location', '/profile')->withStatus(302);
 });
+
