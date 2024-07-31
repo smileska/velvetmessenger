@@ -5,6 +5,7 @@ require('parts/navbar.php');
 ?>
 
 <main>
+    <input type="hidden" id="current-username" value="<?= htmlspecialchars($_SESSION['username']); ?>">
     <div class="container-chat">
         <h1 class="text-3xl font-bold tracking-tight text-gray-900">Chatroom: <?= htmlspecialchars($chatroomName); ?></h1>
         <div id="chat-box" class="chat-box h-96 overflow-y-scroll border border-gray-300 p-4 bg-white rounded-lg shadow-sm">
@@ -130,22 +131,29 @@ require('parts/navbar.php');
             });
     });
 
+    const currentUsername = document.getElementById('current-username').value;
+
     function loadChatroomUsers() {
         fetch(`/chatroom/${chatroomId}/users`)
             .then(response => response.json())
             .then(users => {
                 const usersList = document.getElementById('chatroom-users-list');
                 usersList.innerHTML = '';
+
                 users.forEach(user => {
                     const li = document.createElement('li');
                     li.textContent = user.username;
-                    const removeButton = document.createElement('button');
-                    removeButton.classList.add('ml-2', 'text-gray-500', 'hover:text-gray-700');
-                    removeButton.innerHTML = '<i class="fa fa-remove"></i>';
-                    removeButton.onclick = function() {
-                        removeUser(user.username);
-                    };
-                    li.appendChild(removeButton);
+
+                    if (user.username !== currentUsername) {
+                        const removeButton = document.createElement('button');
+                        removeButton.classList.add('ml-2', 'text-gray-500', 'hover:text-gray-700');
+                        removeButton.innerHTML = '<i class="fa fa-remove"></i>';
+                        removeButton.onclick = function() {
+                            removeUser(user.username);
+                        };
+                        li.appendChild(removeButton);
+                    }
+
                     usersList.appendChild(li);
                 });
             })
@@ -153,7 +161,7 @@ require('parts/navbar.php');
                 console.error('Error loading chatroom users:', error);
             });
     }
-
+    
     function removeUser(username) {
         fetch(`/chatroom/${chatroomId}/remove-user`, {
             method: 'POST',
