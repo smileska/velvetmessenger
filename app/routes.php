@@ -661,4 +661,3 @@ $app->post('/update-password', function (Request $request, Response $response, $
 
     return $response->withHeader('Location', '/profile')->withStatus(302);
 });
-
