@@ -52,11 +52,20 @@ require('parts/navbar.php');
     conn.onmessage = function(e) {
         console.log("Received message:", e.data);
         const messageData = JSON.parse(e.data);
+
         if (messageData.chatroom_id == chatroomId) {
             const chatBox = document.getElementById('chat-box');
             const messageElement = createMessageElement(messageData);
             chatBox.appendChild(messageElement);
             chatBox.scrollTop = chatBox.scrollHeight;
+            let messages = localStorage.getItem('chatroom-' + chatroomId);
+            if (messages) {
+                messages = JSON.parse(messages);
+            } else {
+                messages = [];
+            }
+            messages.push(messageData);
+            localStorage.setItem('chatroom-' + chatroomId, JSON.stringify(messages));
         }
     };
 
@@ -87,6 +96,62 @@ require('parts/navbar.php');
         messageInput.value = '';
     });
 
+    document.getElementById('add-user-form').addEventListener('submit', function(event) {
+        event.preventDefault();
+        const userToAdd = document.getElementById('user-to-add').value;
+
+        fetch(`/chatroom/${chatroomId}/add-user`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ username: userToAdd }),
+        })
+            .then(response => {
+                const contentType = response.headers.get("content-type");
+                if (contentType && contentType.indexOf("application/json") !== -1) {
+                    return response.json().then(data => ({status: response.status, body: data}));
+                } else {
+                    return response.text().then(text => ({status: response.status, body: text}));
+                }
+            })
+            .then(result => {
+                if (result.status !== 200) {
+                    throw new Error(`HTTP error! status: ${result.status}, message: ${result.body.message || result.body}`);
+                }
+                alert(result.body.message);
+                loadChatroomUsers();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert(`An error occurred while adding the user: ${error.message}`);
+            });
+    });
+
+    function loadChatroomUsers() {
+        fetch(`/chatroom/${chatroomId}/users`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(users => {
+                const usersList = document.getElementById('chatroom-users-list');
+                usersList.innerHTML = '';
+                users.forEach(user => {
+                    const li = document.createElement('li');
+                    li.textContent = user.username;
+                    usersList.appendChild(li);
+                });
+            })
+            .catch(error => {
+                console.error('Error loading chatroom users:', error);
+            });
+    }
+
+    window.addEventListener('load', loadChatroomUsers);
+
     function createMessageElement(messageData) {
         const messageElement = document.createElement('div');
         messageElement.classList.add('p-2', 'mb-2', 'rounded-lg');
@@ -97,60 +162,22 @@ require('parts/navbar.php');
             messageElement.classList.add('bg-gray-100', 'self-start');
             messageElement.textContent = `${messageData.sender_name}: ${messageData.message}`;
         }
+        console.log('Creating message element...', messageElement);
         return messageElement;
     }
 
-    document.getElementById('add-user-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-        const username = document.getElementById('user-to-add').value;
-        fetch(`/chatroom/${chatroomId}/add-user`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({username: username})
-        }).then(response => response.json())
-            .then(data => {
-                alert(data.message);
-                if (data.success) {
-                    fetchAndDisplayChatroomUsers();
-                }
-            });
-    });
 
-    document.getElementById('remove-user-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-        const username = document.getElementById('user-to-remove').value;
-        fetch(`/chatroom/${chatroomId}/remove-user`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({username: username})
-        }).then(response => response.json())
-            .then(data => {
-                alert(data.message);
-                fetchAndDisplayChatroomUsers();
+    function loadPreviousMessages() {
+        console.log('Loading previous messages...');
+        const messages = localStorage.getItem('chatroom-' + chatroomId);
+        if (messages) {
+            const parsedMessages = JSON.parse(messages);
+            parsedMessages.forEach(messageData => {
+                createMessageElement(messageData);
             });
-    });
-
-    document.getElementById('leave-chatroom-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-        if (confirm('Are you sure you want to leave this chatroom?')) {
-            fetch(`/chatroom/${chatroomId}/leave`, {
-                method: 'POST'
-            }).then(() => window.location.href = '/');
         }
-    });
-
-    function fetchAndDisplayChatroomUsers() {
-        fetch(`/chatroom/${chatroomId}/users`)
-            .then(response => response.json())
-            .then(users => {
-                const usersList = document.getElementById('chatroom-users-list');
-                usersList.innerHTML = '';
-                users.forEach(user => {
-                    const userItem = document.createElement('li');
-                    userItem.textContent = user.username;
-                    usersList.appendChild(userItem);
-                });
-            })
-            .catch(error => console.error('Error fetching chatroom users:', error));
     }
+
+    window.addEventListener('load', loadPreviousMessages);
+
 </script>
