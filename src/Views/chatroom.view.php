@@ -3,9 +3,12 @@ $title = "Chatroom: " . htmlspecialchars($chatroomName);
 require('parts/head.php');
 require('parts/navbar.php');
 ?>
-
+<?php
+$currentUserId = $_SESSION['user_id'];
+?>
 <main>
     <input type="hidden" id="current-username" value="<?= htmlspecialchars($_SESSION['username']); ?>">
+    <input type="hidden" id="current-user-id" value="<?= htmlspecialchars($_SESSION['user_id']); ?>">
     <div class="container-chat">
         <h1 class="text-3xl font-bold tracking-tight text-gray-900">Chatroom: <?= htmlspecialchars($chatroomName); ?></h1>
         <div id="chat-box" class="chat-box h-96 overflow-y-scroll border border-gray-300 p-4 bg-white rounded-lg shadow-sm">
@@ -44,6 +47,7 @@ require('parts/navbar.php');
 <script type="text/javascript">
     var conn = new WebSocket('ws://localhost:8080');
     var chatroomId = <?= json_encode($chatroomId) ?>;
+    const currentUserId = <?= json_encode($currentUserId); ?>;
 
     conn.onopen = function(e) {
         console.log("Connection established!");
@@ -55,7 +59,8 @@ require('parts/navbar.php');
     conn.onmessage = function(e) {
         console.log("Received message:", e.data);
         const messageData = JSON.parse(e.data);
-
+        console.log("Current User ID:", document.getElementById('current-user-id').value);
+        console.log("Message User ID:", messageData.user_id || messageData.sender_id);
         if (messageData.chatroom_id == chatroomId) {
             const chatBox = document.getElementById('chat-box');
             const messageElement = createMessageElement(messageData);
@@ -88,14 +93,16 @@ require('parts/navbar.php');
         const messageInput = document.getElementById('message');
         const message = messageInput.value;
 
-        const messageData = JSON.stringify({
+        const messageData = {
             type: 'message',
             chatroom_id: chatroomId,
-            sender_id: '<?= htmlspecialchars($_SESSION['user_id']); ?>',
+            sender_id: document.getElementById('current-user-id').value,
+            user_id: document.getElementById('current-user-id').value,
+            username: document.getElementById('current-username').value,
             message: message
-        });
+        };
 
-        conn.send(messageData);
+        conn.send(JSON.stringify(messageData));
         messageInput.value = '';
     });
 
@@ -161,7 +168,7 @@ require('parts/navbar.php');
                 console.error('Error loading chatroom users:', error);
             });
     }
-    
+
     function removeUser(username) {
         fetch(`/chatroom/${chatroomId}/remove-user`, {
             method: 'POST',
@@ -181,30 +188,41 @@ require('parts/navbar.php');
             });
     }
 
+    function loadPreviousMessages() {
+        fetch(`/chatroom/${chatroomId}/messages`)
+            .then(response => response.json())
+            .then(messages => {
+                const chatBox = document.getElementById('chat-box');
+                chatBox.innerHTML = ''; // Clear chat box before loading messages
+                messages.forEach(message => {
+                    const messageElement = createMessageElement(message);
+                    chatBox.appendChild(messageElement);
+                });
+                chatBox.scrollTop = chatBox.scrollHeight;
+            })
+            .catch(error => console.error('Error loading previous messages:', error));
+    }
+
     function createMessageElement(messageData) {
         const messageElement = document.createElement('div');
         messageElement.classList.add('p-2', 'mb-2', 'rounded-lg');
-        if (messageData.sender_id === '<?= htmlspecialchars($_SESSION['user_id']); ?>') {
+
+        const senderId = parseInt(messageData.user_id || messageData.sender_id);
+        const currentUserId = parseInt(document.getElementById('current-user-id').value);
+
+        if (senderId === currentUserId) {
             messageElement.classList.add('bg-blue-100', 'self-end');
             messageElement.textContent = `You: ${messageData.message}`;
         } else {
             messageElement.classList.add('bg-gray-100', 'self-start');
-            messageElement.textContent = `${messageData.sender_name}: ${messageData.message}`;
+            messageElement.textContent = `${messageData.username}: ${messageData.message}`;
         }
-        console.log('Creating message element...', messageElement);
         return messageElement;
     }
 
-    function loadPreviousMessages() {
-        console.log('Loading previous messages...');
-        const messages = localStorage.getItem('chatroom-' + chatroomId);
-        if (messages) {
-            const parsedMessages = JSON.parse(messages);
-            parsedMessages.forEach(messageData => {
-                createMessageElement(messageData);
-            });
-        }
-    }
+    document.addEventListener('DOMContentLoaded', function() {
+        loadPreviousMessages();
+    });
 
     document.addEventListener('DOMContentLoaded', function() {
         console.log('DOM fully loaded');
