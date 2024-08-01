@@ -56,6 +56,7 @@
 </main>
 
 <script>
+    document.addEventListener('DOMContentLoaded', loadChatrooms);
     function loadChatrooms() {
         fetch('/get-chatrooms')
             .then(response => response.json())
@@ -79,8 +80,6 @@
                 }
             });
     }
-
-    document.addEventListener('DOMContentLoaded', loadChatrooms);
     const observer = new MutationObserver(loadChatrooms);
     observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
 
