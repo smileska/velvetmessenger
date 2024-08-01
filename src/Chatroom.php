@@ -48,34 +48,11 @@ class Chatroom
         }
     }
 
-//    public function grantAdminRights($chatroomId, $userId)
-//    {
-//        $stmt = $this->pdo->prepare("UPDATE chatroom_users SET is_admin = TRUE WHERE chatroom_id = :chatroom_id AND user_id = :user_id");
-//        return $stmt->execute(['chatroom_id' => $chatroomId, 'user_id' => $userId]);
-//    }
-
     public function delete($chatroomId)
     {
         $stmt = $this->pdo->prepare("DELETE FROM chatrooms WHERE id = :id");
         return $stmt->execute(['id' => $chatroomId]);
     }
-
-//    public function inviteUser($chatroomId, $inviterId, $inviteeId)
-//    {
-//        $stmt = $this->pdo->prepare("INSERT INTO chatroom_invites (chatroom_id, inviter_id, invitee_id) VALUES (:chatroom_id, :inviter_id, :invitee_id)");
-//        return $stmt->execute(['chatroom_id' => $chatroomId, 'inviter_id' => $inviterId, 'invitee_id' => $inviteeId]);
-//    }
-//
-//    public function approveInvite($inviteId)
-//    {
-//        $stmt = $this->pdo->prepare("UPDATE chatroom_invites SET status = 'approved' WHERE id = :id RETURNING chatroom_id, invitee_id");
-//        $stmt->execute(['id' => $inviteId]);
-//        $result = $stmt->fetch(PDO::FETCH_ASSOC);
-//        if ($result) {
-//            return $this->addUser($result['chatroom_id'], $result['invitee_id']);
-//        }
-//        return false;
-//    }
 
     public function getMessages($chatroomId)
     {
@@ -106,5 +83,11 @@ class Chatroom
     ");
         $stmt->execute(['user_id' => $userId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+    public function isAdmin($chatroomId, $userId)
+    {
+        $stmt = $this->pdo->prepare("SELECT is_admin FROM chatroom_users WHERE chatroom_id = :chatroom_id AND user_id = :user_id");
+        $stmt->execute(['chatroom_id' => $chatroomId, 'user_id' => $userId]);
+        return (bool) $stmt->fetchColumn();
     }
 }
