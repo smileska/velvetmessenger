@@ -55,7 +55,9 @@ $currentUserId = $_SESSION['user_id'];
 
     window.addEventListener('load', loadChatroomUsers);
     window.addEventListener('load', loadPreviousMessages);
-
+    document.addEventListener('DOMContentLoaded', function() {
+        checkAdminStatus();
+    });
     conn.onmessage = function(e) {
         console.log("Received message:", e.data);
         const messageData = JSON.parse(e.data);
@@ -151,7 +153,7 @@ $currentUserId = $_SESSION['user_id'];
                     const li = document.createElement('li');
                     li.textContent = user.username;
 
-                    if (user.username !== currentUsername) {
+                    if (isAdmin && user.username !== currentUsername) {
                         const removeButton = document.createElement('button');
                         removeButton.classList.add('ml-2', 'text-gray-500', 'hover:text-gray-700');
                         removeButton.innerHTML = '<i class="fa fa-remove"></i>';
@@ -193,7 +195,7 @@ $currentUserId = $_SESSION['user_id'];
             .then(response => response.json())
             .then(messages => {
                 const chatBox = document.getElementById('chat-box');
-                chatBox.innerHTML = ''; // Clear chat box before loading messages
+                chatBox.innerHTML = '';
                 messages.forEach(message => {
                     const messageElement = createMessageElement(message);
                     chatBox.appendChild(messageElement);
@@ -282,4 +284,16 @@ $currentUserId = $_SESSION['user_id'];
             });
     }
     console.log('Initial chatroomId:', chatroomId);
+    let isAdmin = false;
+
+    function checkAdminStatus() {
+        fetch(`/chatroom/${chatroomId}/is-admin`)
+            .then(response => response.json())
+            .then(data => {
+                isAdmin = data.isAdmin;
+            })
+            .catch(error => console.error('Error checking admin status:', error));
+    }
+
+
 </script>
