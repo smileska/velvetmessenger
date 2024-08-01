@@ -481,10 +481,13 @@ return function (App $app) {
         $chatroomId = $args['id'];
         $data = $request->getParsedBody();
         $username = $data['username'] ?? null;
-
-        error_log("Attempting to add user to chatroom. Data: " . json_encode($data));
+        $currentUserId = $_SESSION['user_id'];
 
         try {
+            if (!$chatroom->isAdmin($chatroomId, $currentUserId)) {
+                throw new Exception("Only admins can add users to the chatroom");
+            }
+
             if (!$username) {
                 throw new Exception("Username is missing from request");
             }
@@ -497,30 +500,23 @@ return function (App $app) {
                 throw new Exception("User not found: $username");
             }
 
-            $chatroom = new Chatroom($pdo);
             $result = $chatroom->addUser($chatroomId, $userId);
 
             if (!$result) {
                 throw new Exception("Failed to add user: $username to chatroom: $chatroomId");
             }
 
-            error_log("User added successfully: $username to chatroom: $chatroomId");
-
             $response->getBody()->write(json_encode(['message' => 'User added successfully']));
             return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
 
         } catch (Exception $e) {
-            error_log("Exception in add-user route: " . $e->getMessage());
-            error_log("Stack trace: " . $e->getTraceAsString());
-
             $response->getBody()->write(json_encode([
-                'message' => 'An error occurred while processing your request',
+                'message' => 'Only admins can add users to the chatroom',
                 'error' => $e->getMessage()
             ]));
             return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
         }
     });
-
 
     $app->get('/chatroom/{id}/users', function (Request $request, Response $response, $args) use ($container) {
         $pdo = $container->get(PDO::class);
@@ -546,10 +542,13 @@ return function (App $app) {
         $chatroomId = $args['id'];
         $data = $request->getParsedBody();
         $username = $data['username'] ?? null;
-
-        error_log("Attempting to remove user from chatroom. Data: " . json_encode($data));
+        $currentUserId = $_SESSION['user_id'];
 
         try {
+            if (!$chatroom->isAdmin($chatroomId, $currentUserId)) {
+                throw new Exception("Only admins can remove users from the chatroom");
+            }
+
             if (!$username) {
                 throw new Exception("Username is missing from request");
             }
@@ -562,22 +561,16 @@ return function (App $app) {
                 throw new Exception("User not found: $username");
             }
 
-            $chatroom = new Chatroom($pdo);
             $result = $chatroom->removeUser($chatroomId, $userId);
 
             if (!$result) {
                 throw new Exception("Failed to remove user: $username from chatroom: $chatroomId");
             }
 
-            error_log("User removed successfully: $username from chatroom: $chatroomId");
-
             $response->getBody()->write(json_encode(['message' => 'User removed successfully']));
             return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
 
         } catch (Exception $e) {
-            error_log("Exception in remove-user route: " . $e->getMessage());
-            error_log("Stack trace: " . $e->getTraceAsString());
-
             $response->getBody()->write(json_encode([
                 'message' => 'An error occurred while processing your request',
                 'error' => $e->getMessage()
@@ -608,6 +601,17 @@ return function (App $app) {
 
         $response->getBody()->write(json_encode($messages));
         return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+    });
+
+    $app->get('/chatroom/{id}/is-admin', function (Request $request, Response $response, $args) use ($container) {
+        $chatroom = $container->get(Chatroom::class);
+        $chatroomId = $args['id'];
+        $userId = $_SESSION['user_id'];
+
+        $isAdmin = $chatroom->isAdmin($chatroomId, $userId);
+
+        $response->getBody()->write(json_encode(['isAdmin' => $isAdmin]));
+        return $response->withHeader('Content-Type', 'application/json');
     });
 
     $app->post('/update-username', function (Request $request, Response $response, $args) use ($container) {
