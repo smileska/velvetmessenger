@@ -1,6 +1,7 @@
 <?php
 
 namespace App;
+
 use Ratchet\MessageComponentInterface;
 use Ratchet\ConnectionInterface;
 use PDO;
