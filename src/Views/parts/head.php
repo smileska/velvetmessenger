@@ -17,12 +17,21 @@
             const darkModeToggle = document.getElementById('darkModeToggle');
             const moonIcon = document.getElementById('moonIcon');
             const sunIcon = document.getElementById('sunIcon');
+            const isDarkMode = <?php echo isset($_SESSION['dark_mode']) && $_SESSION['dark_mode'] ? 'true' : 'false'; ?>;
+            if (isDarkMode) {
+                body.classList.add('dark-mode');
+                moonIcon.classList.add('hidden');
+                sunIcon.classList.remove('hidden');
+            }
 
             darkModeToggle.addEventListener('click', () => {
-                body.classList.toggle('dark-mode');
-
-                moonIcon.classList.toggle('hidden');
-                sunIcon.classList.toggle('hidden');
+                fetch('/toggle-dark-mode', { method: 'POST' })
+                    .then(response => response.json())
+                    .then(data => {
+                        body.classList.toggle('dark-mode', data.dark_mode);
+                        moonIcon.classList.toggle('hidden', data.dark_mode);
+                        sunIcon.classList.toggle('hidden', !data.dark_mode);
+                    });
             });
         });
     </script>
