@@ -900,4 +900,14 @@ return function (App $app) {
             return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
         }
     });
+    $app->post('/toggle-dark-mode', function (Request $request, Response $response) {
+        $darkMode = $_SESSION['dark_mode'] ?? false;
+        $_SESSION['dark_mode'] = !$darkMode;
+
+        $data = ['dark_mode' => $_SESSION['dark_mode']];
+        $response->getBody()->write(json_encode($data));
+
+        return $response->withHeader('Content-Type', 'application/json');
+    });
+
 };
