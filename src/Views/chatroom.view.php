@@ -21,7 +21,7 @@ $currentUserId = $_SESSION['user_id'];
             <button type="submit" class="btn-primary ml-3 px-4 py-2 bg-blue-500 text-white rounded-lg shadow hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">Send</button>
         </form>
 
-        <div class="mt-4">
+        <div id="manage-users-section" style="display: none;">
             <h3 class="text-xl font-bold mb-2">Manage Users</h3>
             <form id="add-user-form" class="mb-2 flex">
                 <input type="text" id="user-to-add" placeholder="Username to add" required class="flex-grow p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -29,10 +29,24 @@ $currentUserId = $_SESSION['user_id'];
             </form>
         </div>
 
+        <div id="suggest-users-section" style="display: none;">
+            <h3 class="text-xl font-bold mb-2">Suggest Users</h3>
+            <form id="suggest-user-form" class="mb-2 flex">
+                <input type="text" id="suggested-username" placeholder="Username to suggest" required class="flex-grow p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <button type="submit" class="btn-primary ml-3 px-4 py-2 bg-green-500 text-white rounded-lg shadow hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50">Suggest</button>
+            </form>
+        </div>
+
         <div class="mt-4">
             <h3 class="text-xl font-bold mb-2">Chatroom Users</h3>
             <ul id="chatroom-users-list" class="list-disc pl-5">
                 <!-- korisnici -->
+            </ul>
+        </div>
+        <div class="mt-4">
+            <h3 class="text-xl font-bold mb-2">Suggested Users</h3>
+            <ul id="suggested-users-list" class="list-disc pl-5">
+                <!-- suggested -->
             </ul>
         </div>
 
@@ -56,7 +70,10 @@ $currentUserId = $_SESSION['user_id'];
     window.addEventListener('load', loadChatroomUsers);
     window.addEventListener('load', loadPreviousMessages);
     document.addEventListener('DOMContentLoaded', function() {
-        checkAdminStatus();
+        checkUserRole();
+    });
+    document.addEventListener('DOMContentLoaded', function() {
+        loadSuggestedUsers();
     });
     conn.onmessage = function(e) {
         console.log("Received message:", e.data);
@@ -139,6 +156,105 @@ $currentUserId = $_SESSION['user_id'];
                 alert(`An error occurred while adding the user: ${error.message}`);
             });
     });
+    document.getElementById('suggest-user-form').addEventListener('submit', function(event) {
+        event.preventDefault();
+        const suggestedUsername = document.getElementById('suggested-username').value;
+
+        fetch(`/chatroom/${chatroomId}/suggest-user`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ username: suggestedUsername }),
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    loadSuggestedUsers();
+                    document.getElementById('suggested-username').value = ''; // Clear the input
+                } else {
+                    alert(`Error: ${data.message}`);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert(`An error occurred: ${error.message}`);
+            });
+    });
+
+    function loadSuggestedUsers() {
+        fetch(`/chatroom/${chatroomId}/suggested-users`)
+            .then(response => response.json())
+            .then(users => {
+                const usersList = document.getElementById('suggested-users-list');
+                usersList.innerHTML = '';
+
+                users.forEach(user => {
+                    const li = document.createElement('li');
+                    li.textContent = user.username;
+
+                    if (userRole === 'admin') {
+                        const approveButton = createButton('fa-check', 'text-gray-500', () => approveSuggestion(user.id));
+                        const deleteButton = createButton('fa-times', 'text-gray-500', () => deleteSuggestion(user.id));
+
+                        li.appendChild(approveButton);
+                        li.appendChild(deleteButton);
+                    }
+
+                    usersList.appendChild(li);
+                });
+            })
+            .catch(error => console.error('Error loading suggested users:', error));
+    }
+
+    function approveSuggestion(userId) {
+        fetch(`/chatroom/${chatroomId}/approve-suggestion`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ user_id: userId }),
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    loadSuggestedUsers();
+                    loadChatroomUsers();
+                } else {
+                    alert(`Error: ${data.message}`);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert(`An error occurred: ${error.message}`);
+            });
+    }
+
+    function deleteSuggestion(userId) {
+        fetch(`/chatroom/${chatroomId}/delete-suggestion`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ user_id: userId }),
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    loadSuggestedUsers();
+                } else {
+                    alert(`Error: ${data.message}`);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert(`An error occurred: ${error.message}`);
+            });
+    }
+
 
     const currentUsername = document.getElementById('current-username').value;
 
@@ -149,17 +265,14 @@ $currentUserId = $_SESSION['user_id'];
                 const usersList = document.getElementById('chatroom-users-list');
                 usersList.innerHTML = '';
 
+                const currentUsername = document.getElementById('current-username').value;
+
                 users.forEach(user => {
                     const li = document.createElement('li');
                     li.textContent = user.username;
 
-                    if (isAdmin && user.username !== currentUsername) {
-                        const removeButton = document.createElement('button');
-                        removeButton.classList.add('ml-2', 'text-gray-500', 'hover:text-gray-700');
-                        removeButton.innerHTML = '<i class="fa fa-remove"></i>';
-                        removeButton.onclick = function() {
-                            removeUser(user.username);
-                        };
+                    if (userRole === 'admin' && user.username !== currentUsername) {
+                        const removeButton = createButton('fa-times', 'text-gray-500', () => removeUser(user.username));
                         li.appendChild(removeButton);
                     }
 
@@ -171,23 +284,33 @@ $currentUserId = $_SESSION['user_id'];
             });
     }
 
+    function createButton(iconClass, colorClass, clickHandler) {
+        const button = document.createElement('button');
+        button.classList.add('ml-2', colorClass, 'hover:' + colorClass.replace('500', '700'));
+        button.innerHTML = `<i class="fa ${iconClass}"></i>`;
+        button.onclick = clickHandler;
+        return button;
+    }
+
     function removeUser(username) {
-        fetch(`/chatroom/${chatroomId}/remove-user`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ username: username }),
-        })
-            .then(response => response.json())
-            .then(data => {
-                alert(data.message);
-                loadChatroomUsers();
+        if (confirm(`Are you sure you want to remove ${username} from the chatroom?`)) {
+            fetch(`/chatroom/${chatroomId}/remove-user`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ username: username }),
             })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('An error occurred while removing the user');
-            });
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message);
+                    loadChatroomUsers();
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while removing the user');
+                });
+        }
     }
 
     function loadPreviousMessages() {
@@ -286,14 +409,37 @@ $currentUserId = $_SESSION['user_id'];
     console.log('Initial chatroomId:', chatroomId);
     let isAdmin = false;
 
-    function checkAdminStatus() {
-        fetch(`/chatroom/${chatroomId}/is-admin`)
+    let userRole = 'guest';
+
+    function checkUserRole() {
+        fetch(`/chatroom/${chatroomId}/user-role`)
             .then(response => response.json())
             .then(data => {
-                isAdmin = data.isAdmin;
+                userRole = data.role;
+                updateUIBasedOnRole();
             })
-            .catch(error => console.error('Error checking admin status:', error));
+            .catch(error => console.error('Error checking user role:', error));
     }
+
+    function updateUIBasedOnRole() {
+        const manageUsersSection = document.getElementById('manage-users-section');
+        const suggestUsersSection = document.getElementById('suggest-users-section');
+
+        if (userRole === 'admin') {
+            manageUsersSection.style.display = 'block';
+            suggestUsersSection.style.display = 'none';
+            loadChatroomUsers();
+        } else if (userRole === 'user') {
+            manageUsersSection.style.display = 'none';
+            suggestUsersSection.style.display = 'block';
+        } else {
+            manageUsersSection.style.display = 'none';
+            suggestUsersSection.style.display = 'none';
+        }
+        loadSuggestedUsers();
+    }
+
+    document.addEventListener('DOMContentLoaded', checkUserRole);
 
 
 </script>
