@@ -475,13 +475,38 @@ return function (App $app) {
         return $response;
     });
 
+    $app->get('/chatroom/{id}/user-role', function (Request $request, Response $response, $args) use ($container) {
+        $chatroom = $container->get(Chatroom::class);
+        $chatroomId = (int)$args['id'];
+        $userId = $_SESSION['user_id'] ?? null;
+
+        if (!$userId) {
+            $data = ['role' => 'guest'];
+            $response->getBody()->write(json_encode($data));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(401);
+        }
+
+        $isAdmin = $chatroom->isAdmin($chatroomId, $userId);
+        $role = $isAdmin ? 'admin' : 'user';
+
+        $data = ['role' => $role];
+        $response->getBody()->write(json_encode($data));
+        return $response->withHeader('Content-Type', 'application/json');
+    });
+
+
     $app->post('/chatroom/{id}/add-user', function (Request $request, Response $response, $args) use ($container) {
         $pdo = $container->get(PDO::class);
         $chatroom = $container->get(Chatroom::class);
-        $chatroomId = $args['id'];
+        $chatroomId = (int)$args['id'];
         $data = $request->getParsedBody();
         $username = $data['username'] ?? null;
-        $currentUserId = $_SESSION['user_id'];
+        $currentUserId = $_SESSION['user_id'] ?? null;
+
+        if (!$currentUserId) {
+            $response->getBody()->write(json_encode(['message' => 'User not authenticated']));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(401);
+        }
 
         try {
             if (!$chatroom->isAdmin($chatroomId, $currentUserId)) {
@@ -508,11 +533,159 @@ return function (App $app) {
 
             $response->getBody()->write(json_encode(['message' => 'User added successfully']));
             return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
-
         } catch (Exception $e) {
             $response->getBody()->write(json_encode([
-                'message' => 'Only admins can add users to the chatroom',
-                'error' => $e->getMessage()
+                'message' => $e->getMessage(),
+            ]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
+        }
+    });
+
+    $app->post('/chatroom/{id}/suggest-user', function (Request $request, Response $response, $args) use ($container) {
+        $pdo = $container->get(PDO::class);
+        $chatroomId = (int)$args['id'];
+        $data = $request->getParsedBody();
+        $username = $data['username'] ?? null;
+
+        $currentUserId = $_SESSION['user_id'] ?? null;
+
+        if (!$currentUserId) {
+            $response->getBody()->write(json_encode(['message' => 'User not authenticated']));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(401);
+        }
+
+        try {
+            $chatroom = $container->get(Chatroom::class);
+            if (!$chatroom->isUserInChatroom($chatroomId, $currentUserId)) {
+                throw new Exception("User is not in the chatroom");
+            }
+
+            if (!$username) {
+                throw new Exception("Username is missing from request");
+            }
+
+            $stmt = $pdo->prepare("SELECT id FROM users WHERE username = :username");
+            $stmt->execute(['username' => $username]);
+            $suggestedUserId = $stmt->fetchColumn();
+
+            if (!$suggestedUserId) {
+                throw new Exception("User not found: $username");
+            }
+
+            $stmt = $pdo->prepare("SELECT * FROM suggested_users WHERE chatroom_id = :chatroom_id AND suggested_user_id = :suggested_user_id");
+            $stmt->execute(['chatroom_id' => $chatroomId, 'suggested_user_id' => $suggestedUserId]);
+
+            if ($stmt->rowCount() > 0) {
+                throw new Exception("User has already been suggested");
+            }
+
+            $stmt = $pdo->prepare('INSERT INTO suggested_users (chatroom_id, suggested_user_id, suggested_by_user_id) VALUES (:chatroom_id, :suggested_user_id, :suggested_by_user_id)');
+            $stmt->execute([
+                'chatroom_id' => $chatroomId,
+                'suggested_user_id' => $suggestedUserId,
+                'suggested_by_user_id' => $currentUserId
+            ]);
+
+            $response->getBody()->write(json_encode(['success' => true, 'message' => 'User suggestion added successfully']));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+        } catch (Exception $e) {
+            $response->getBody()->write(json_encode([
+                'success' => false,
+                'message' => $e->getMessage()
+            ]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+        }
+    });
+
+    $app->get('/chatroom/{id}/suggested-users', function (Request $request, Response $response, $args) use ($container) {
+        $pdo = $container->get(PDO::class);
+        $chatroomId = (int)$args['id'];
+
+        $stmt = $pdo->prepare('
+        SELECT u.id, u.username 
+        FROM suggested_users su 
+        JOIN users u ON su.suggested_user_id = u.id 
+        WHERE su.chatroom_id = :chatroom_id
+    ');
+        $stmt->execute(['chatroom_id' => $chatroomId]);
+        $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $response->getBody()->write(json_encode($users));
+        return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+    });
+
+    $app->post('/chatroom/{id}/approve-suggestion', function (Request $request, Response $response, $args) use ($container) {
+        $pdo = $container->get(PDO::class);
+        $chatroomId = (int)$args['id'];
+        $data = $request->getParsedBody();
+        $userId = $data['user_id'] ?? null;
+
+        $currentUserId = $_SESSION['user_id'] ?? null;
+
+        if (!$currentUserId) {
+            $response->getBody()->write(json_encode(['message' => 'User not authenticated']));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(401);
+        }
+
+        try {
+            $chatroom = $container->get(Chatroom::class);
+            if (!$chatroom->isAdmin($chatroomId, $currentUserId)) {
+                throw new Exception("Only admins can approve suggestions");
+            }
+
+            if (!$userId) {
+                throw new Exception("User ID is missing from request");
+            }
+
+            $stmt = $pdo->prepare('INSERT INTO chatroom_users (chatroom_id, user_id, is_admin) VALUES (:chatroom_id, :user_id, FALSE)');
+            $stmt->execute(['chatroom_id' => $chatroomId, 'user_id' => $userId]);
+
+            $stmt = $pdo->prepare('DELETE FROM suggested_users WHERE chatroom_id = :chatroom_id AND suggested_user_id = :suggested_user_id');
+            $stmt->execute(['chatroom_id' => $chatroomId, 'suggested_user_id' => $userId]);
+
+            $response->getBody()->write(json_encode(['success' => true, 'message' => 'Suggestion approved and user added to chatroom']));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+        } catch (Exception $e) {
+            $response->getBody()->write(json_encode([
+                'success' => false,
+                'message' => $e->getMessage()
+            ]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
+        }
+    });
+
+    $app->post('/chatroom/{id}/delete-suggestion', function (Request $request, Response $response, $args) use ($container) {
+        $pdo = $container->get(PDO::class);
+        $chatroomId = (int)$args['id'];
+        $data = $request->getParsedBody();
+        $userId = $data['user_id'] ?? null;
+
+        $currentUserId = $_SESSION['user_id'] ?? null;
+
+        if (!$currentUserId) {
+            $response->getBody()->write(json_encode(['message' => 'User not authenticated']));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(401);
+        }
+
+        try {
+            $chatroom = $container->get(Chatroom::class);
+            if (!$chatroom->isAdmin($chatroomId, $currentUserId)) {
+                throw new Exception("Only admins can delete suggestions");
+            }
+
+            if (!$userId) {
+                throw new Exception("User ID is missing from request");
+            }
+
+            $stmt = $pdo->prepare('DELETE FROM suggested_users WHERE chatroom_id = :chatroom_id AND suggested_user_id = :suggested_user_id');
+            $stmt->execute(['chatroom_id' => $chatroomId, 'suggested_user_id' => $userId]);
+
+            $response->getBody()->write(json_encode(['success' => true, 'message' => 'Suggestion deleted successfully']));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+        } catch (Exception $e) {
+            $response->getBody()->write(json_encode([
+                'success' => false,
+                'message' => $e->getMessage()
             ]));
             return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
         }

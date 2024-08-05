@@ -90,4 +90,27 @@ class Chatroom
         $stmt->execute(['chatroom_id' => $chatroomId, 'user_id' => $userId]);
         return (bool) $stmt->fetchColumn();
     }
+    public function isUserInChatroom($chatroomId, $userId)
+    {
+        $stmt = $this->pdo->prepare('SELECT 1 FROM chatroom_users WHERE chatroom_id = :chatroom_id AND user_id = :user_id LIMIT 1');
+        $stmt->execute([
+            'chatroom_id' => $chatroomId,
+            'user_id' => $userId,
+        ]);
+
+        return $stmt->rowCount() > 0;
+    }
+
+    public function getSuggestedUsers($chatroomId)
+    {
+        $stmt = $this->pdo->prepare("
+        SELECT su.user_id, u.username
+        FROM suggested_users su
+        JOIN users u ON su.user_id = u.id
+        WHERE su.chatroom_id = :chatroom_id
+    ");
+        $stmt->execute(['chatroom_id' => $chatroomId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
 }
