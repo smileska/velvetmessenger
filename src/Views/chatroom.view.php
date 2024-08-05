@@ -273,7 +273,12 @@ $currentUserId = $_SESSION['user_id'];
 
                     if (userRole === 'admin' && user.username !== currentUsername) {
                         const removeButton = createButton('fa-times', 'text-gray-500', () => removeUser(user.username));
+                        const grantAdminButton = createButton('fa-user-shield', 'text-blue-500', () => grantAdminPrivileges(user.username));
+
                         li.appendChild(removeButton);
+                        if (!user.is_admin) {
+                            li.appendChild(grantAdminButton);
+                        }
                     }
 
                     usersList.appendChild(li);
@@ -282,6 +287,31 @@ $currentUserId = $_SESSION['user_id'];
             .catch(error => {
                 console.error('Error loading chatroom users:', error);
             });
+    }
+
+    function grantAdminPrivileges(username) {
+        if (confirm(`Are you sure you want to grant admin privileges to ${username}?`)) {
+            fetch(`/chatroom/${chatroomId}/grant-admin`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ username: username }),
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(data.message);
+                        loadChatroomUsers();
+                    } else {
+                        alert(`Error: ${data.message}`);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while granting admin privileges');
+                });
+        }
     }
 
     function createButton(iconClass, colorClass, clickHandler) {
@@ -416,7 +446,9 @@ $currentUserId = $_SESSION['user_id'];
             .then(response => response.json())
             .then(data => {
                 userRole = data.role;
+                isAdmin = (userRole === 'admin');
                 updateUIBasedOnRole();
+                loadChatroomUsers();
             })
             .catch(error => console.error('Error checking user role:', error));
     }
@@ -428,7 +460,6 @@ $currentUserId = $_SESSION['user_id'];
         if (userRole === 'admin') {
             manageUsersSection.style.display = 'block';
             suggestUsersSection.style.display = 'none';
-            loadChatroomUsers();
         } else if (userRole === 'user') {
             manageUsersSection.style.display = 'none';
             suggestUsersSection.style.display = 'block';
@@ -436,6 +467,8 @@ $currentUserId = $_SESSION['user_id'];
             manageUsersSection.style.display = 'none';
             suggestUsersSection.style.display = 'none';
         }
+
+        loadChatroomUsers();
         loadSuggestedUsers();
     }
 

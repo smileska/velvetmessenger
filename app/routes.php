@@ -696,10 +696,10 @@ return function (App $app) {
         $chatroomId = $args['id'];
 
         $stmt = $pdo->prepare('
-        SELECT u.username 
-        FROM chatroom_users cu 
-        JOIN users u ON cu.user_id = u.id 
-        WHERE cu.chatroom_id = :chatroom_id
+    SELECT u.username, cu.is_admin 
+    FROM chatroom_users cu 
+    JOIN users u ON cu.user_id = u.id 
+    WHERE cu.chatroom_id = :chatroom_id
     ');
         $stmt->execute(['chatroom_id' => $chatroomId]);
         $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -851,5 +851,53 @@ return function (App $app) {
         $stmt->execute(['password' => $hashedNewPassword, 'id' => $userId]);
 
         return $response->withHeader('Location', '/profile')->withStatus(302);
+    });
+
+    $app->post('/chatroom/{id}/grant-admin', function (Request $request, Response $response, $args) use ($container) {
+        $pdo = $container->get(PDO::class);
+        $chatroom = $container->get(Chatroom::class);
+        $chatroomId = (int)$args['id'];
+        $data = $request->getParsedBody();
+        $username = $data['username'] ?? null;
+        $currentUserId = $_SESSION['user_id'] ?? null;
+
+        if (!$currentUserId) {
+            $response->getBody()->write(json_encode(['success' => false, 'message' => 'User not authenticated']));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(401);
+        }
+
+        try {
+            if (!$chatroom->isAdmin($chatroomId, $currentUserId)) {
+                throw new Exception("Only admins can grant admin privileges");
+            }
+
+            if (!$username) {
+                throw new Exception("Username is missing from request");
+            }
+
+            $stmt = $pdo->prepare('SELECT id FROM users WHERE username = :username');
+            $stmt->execute(['username' => $username]);
+            $userId = $stmt->fetchColumn();
+
+            if (!$userId) {
+                throw new Exception("User not found: $username");
+            }
+
+            $stmt = $pdo->prepare('UPDATE chatroom_users SET is_admin = TRUE WHERE chatroom_id = :chatroom_id AND user_id = :user_id');
+            $result = $stmt->execute(['chatroom_id' => $chatroomId, 'user_id' => $userId]);
+
+            if (!$result) {
+                throw new Exception("Failed to grant admin privileges to user: $username");
+            }
+
+            $response->getBody()->write(json_encode(['success' => true, 'message' => "Admin privileges granted to $username"]));
+            return $response->withHeader('Content-Type', 'application/json');
+        } catch (Exception $e) {
+            $response->getBody()->write(json_encode([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+        }
     });
 };
