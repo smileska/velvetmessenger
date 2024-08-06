@@ -53,8 +53,18 @@ return function (App $app) {
         $sender = $_SESSION['username'];
         $recipient = $args['recipient'];
 
-        $stmt = $pdo->prepare('SELECT * FROM messages WHERE (sender = :sender AND recipient = :recipient) OR (sender = :recipient AND recipient = :sender) ORDER BY timestamp ASC');
-        $stmt->execute(['sender' => $sender, 'recipient' => $recipient]);
+        $stmt = $pdo->prepare('
+        SELECT m.*, mr.reaction_type 
+        FROM messages m
+        LEFT JOIN message_reactions mr ON m.id = mr.message_id AND mr.user_id = :user_id
+        WHERE (m.sender = :sender AND m.recipient = :recipient) OR (m.sender = :recipient AND m.recipient = :sender) 
+        ORDER BY m.timestamp ASC
+    ');
+        $stmt->execute([
+            'sender' => $sender,
+            'recipient' => $recipient,
+            'user_id' => $_SESSION['user_id']
+        ]);
         $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         $response->getBody()->write(json_encode($messages));
@@ -909,5 +919,77 @@ return function (App $app) {
 
         return $response->withHeader('Content-Type', 'application/json');
     });
+
+    $app->post('/message/{id}/react', function (Request $request, Response $response, $args) use ($container) {
+        $messageId = $args['id'] ?? null;
+        $userId = $_SESSION['user_id'] ?? null;
+        $reactionType = $request->getParsedBody()['reactionType'] ?? null;
+
+        error_log("Received reaction request: " . json_encode(['messageId' => $messageId, 'userId' => $userId, 'reactionType' => $reactionType]));
+
+        if (!$messageId || !$userId || !$reactionType) {
+            error_log("Invalid message ID, user ID, or reaction type");
+            $data = ['success' => false, 'error' => 'Invalid message ID, user ID, or reaction type'];
+            $response->getBody()->write(json_encode($data));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+        }
+
+        $pdo = $container->get(PDO::class);
+
+        try {
+            $stmt = $pdo->prepare('
+            INSERT INTO message_reactions (message_id, user_id, reaction_type) 
+            VALUES (:message_id, :user_id, :reaction_type)
+            ON CONFLICT (message_id, user_id) 
+            DO UPDATE SET reaction_type = :reaction_type
+        ');
+            $result = $stmt->execute([
+                'message_id' => $messageId,
+                'user_id' => $userId,
+                'reaction_type' => $reactionType
+            ]);
+
+            if ($result) {
+                error_log("Reaction saved successfully");
+                $data = ['success' => true];
+            } else {
+                error_log("Failed to save reaction: " . json_encode($stmt->errorInfo()));
+                $data = ['success' => false, 'error' => 'Failed to save reaction'];
+            }
+        } catch (PDOException $e) {
+            error_log("PDO Exception: " . $e->getMessage());
+            $data = ['success' => false, 'error' => $e->getMessage()];
+        }
+
+        $response->getBody()->write(json_encode($data));
+        return $response->withHeader('Content-Type', 'application/json');
+    });
+
+
+    $app->post('/chatroom-message/{id}/react', function (Request $request, Response $response, $args) use ($container) {
+        $messageId = $args['id'];
+        $userId = $_SESSION['user_id'];
+        $reactionType = $request->getParsedBody()['reactionType'];
+
+        $pdo = $container->get(PDO::class);
+
+        $stmt = $pdo->prepare('
+    INSERT INTO chatroom_message_reactions (chatroom_message_id, user_id, reaction_type) 
+    VALUES (:message_id, :user_id, :reaction_type)
+    ON CONFLICT (chatroom_message_id, user_id) 
+    DO UPDATE SET reaction_type = :reaction_type
+');
+        $result = $stmt->execute([
+            'message_id' => $messageId,
+            'user_id' => $userId,
+            'reaction_type' => $reactionType
+        ]);
+
+        $data = ['success' => $result];
+        $response->getBody()->write(json_encode($data));
+
+        return $response->withHeader('Content-Type', 'application/json');
+    });
+
 
 };
