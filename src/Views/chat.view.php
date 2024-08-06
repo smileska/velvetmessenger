@@ -12,8 +12,8 @@ require('parts/navbar.php');
 
         <form method="post" id="chat-form" class="mt-4 flex">
             <input type="hidden" id="recipient" value="<?= htmlspecialchars($chatUser['username']); ?>">
-            <input type="text" id="message" placeholder="Type your message here" required class="flex-grow p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <button type="submit" class="btn-primary ml-3 px-4 py-1 bg-blue-500 text-white rounded-lg shadow hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">Send</button>
+            <input type="text" id="message" placeholder="Type your message here" required class="flex-grow p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100">
+            <button type="submit" class="btn-primary ml-3 px-4 py-1 bg-blue-100 text-white rounded-lg shadow hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:ring-opacity-50">Send</button>
         </form>
     </div>
 </main>
@@ -156,10 +156,13 @@ require('parts/navbar.php');
         }
 
         const reactionPopup = document.createElement('div');
-        reactionPopup.classList.add('reaction-popup', 'hidden', 'absolute', 'bg-white', 'rounded-lg', 'shadow-md', 'p-2', 'z-10');
+        reactionPopup.classList.add('reaction-popup', 'hidden', 'absolute', 'bg-gray-100', 'rounded-lg', 'shadow-md', 'p-2', 'z-10');
+
+
         reactionPopup.style.bottom = '100%';
         reactionPopup.style.left = '0';
         reactionPopup.style.transform = 'translateY(-10px)';
+
 
         Object.entries(REACTION_TYPES).forEach(([type, emoji]) => {
             const emojiButton = document.createElement('button');
@@ -236,7 +239,9 @@ require('parts/navbar.php');
         updateReactionButton(reactionButton, initialReaction);
 
         const reactionPopup = document.createElement('div');
-        reactionPopup.classList.add('reaction-popup', 'hidden', 'absolute', 'bg-white', 'rounded-lg', 'shadow-md', 'p-2', 'z-10');
+        reactionPopup.classList.add('reaction-popup', 'hidden', 'absolute', 'rounded-lg', 'shadow-md', 'p-2', 'z-10');
+        const messageBgColor = window.getComputedStyle(messageElement).backgroundColor;
+        reactionPopup.style.backgroundColor = messageBgColor;
         reactionPopup.style.bottom = '100%';
         reactionPopup.style.left = '0';
 
