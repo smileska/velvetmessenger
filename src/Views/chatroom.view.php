@@ -64,7 +64,10 @@ $currentUserId = $_SESSION['user_id'];
         2: '❤️',
         3: '😂',
         4: '😮',
-        5: '😢'
+        5: '😢',
+        6: '🐴',
+        7: '🍮',
+        8: '🌹'
     };
     var conn = new WebSocket('ws://localhost:8080');
     var chatroomId = <?= json_encode($chatroomId) ?>;
@@ -501,7 +504,12 @@ $currentUserId = $_SESSION['user_id'];
         updateReactionButton(reactionButton, initialReaction);
 
         const reactionPopup = document.createElement('div');
-        reactionPopup.classList.add('reaction-popup', 'hidden', 'absolute', 'bg-white', 'rounded-lg', 'shadow-md', 'p-2', 'z-10');
+        reactionPopup.classList.add('reaction-popup', 'hidden', 'absolute', 'bg-gray-100', 'rounded-lg', 'shadow-md', 'p-2', 'z-10');
+        if (messageElement.classList.contains('bg-blue-100')) {
+            reactionPopup.classList.add('bg-blue-100');
+        } else {
+            reactionPopup.classList.add('bg-gray-100');
+        }
         reactionPopup.style.bottom = '100%';
         reactionPopup.style.left = '0';
 
