@@ -56,9 +56,59 @@ class Chatroom
 
     public function getMessages($chatroomId)
     {
-        $stmt = $this->pdo->prepare("SELECT cm.*, u.username FROM chatroom_messages cm JOIN users u ON cm.user_id = u.id WHERE cm.chatroom_id = :chatroom_id ORDER BY cm.sent_at ASC");
-        $stmt->execute(['chatroom_id' => $chatroomId]);
+        $stmt = $this->pdo->prepare("
+            SELECT cm.*, u.username, cmr.reaction_type
+            FROM chatroom_messages cm
+            JOIN users u ON cm.user_id = u.id
+            LEFT JOIN chatroom_message_reactions cmr ON cm.id = cmr.chatroom_message_id AND cmr.user_id = :current_user_id
+            WHERE cm.chatroom_id = :chatroom_id
+            ORDER BY cm.sent_at ASC
+        ");
+        $stmt->execute([
+            'chatroom_id' => $chatroomId,
+            'current_user_id' => $_SESSION['user_id']
+        ]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function addReaction($messageId, $userId, $reactionType)
+    {
+        $stmt = $this->pdo->prepare("
+            INSERT INTO chatroom_message_reactions (chatroom_message_id, user_id, reaction_type)
+            VALUES (:message_id, :user_id, :reaction_type)
+            ON CONFLICT (chatroom_message_id, user_id) 
+            DO UPDATE SET reaction_type = :reaction_type
+        ");
+        return $stmt->execute([
+            'message_id' => $messageId,
+            'user_id' => $userId,
+            'reaction_type' => $reactionType
+        ]);
+    }
+    public function removeReaction($messageId, $userId)
+    {
+        $stmt = $this->pdo->prepare("
+            DELETE FROM chatroom_message_reactions
+            WHERE chatroom_message_id = :message_id AND user_id = :user_id
+        ");
+        return $stmt->execute([
+            'message_id' => $messageId,
+            'user_id' => $userId
+        ]);
+    }
+
+    public function getReaction($messageId, $userId)
+    {
+        $stmt = $this->pdo->prepare("
+            SELECT reaction_type
+            FROM chatroom_message_reactions
+            WHERE chatroom_message_id = :message_id AND user_id = :user_id
+        ");
+        $stmt->execute([
+            'message_id' => $messageId,
+            'user_id' => $userId
+        ]);
+        return $stmt->fetchColumn();
     }
 
     public function addMessage($chatroomId, $userId, $message)
@@ -100,6 +150,7 @@ class Chatroom
 
         return $stmt->rowCount() > 0;
     }
+
 
     public function getSuggestedUsers($chatroomId)
     {
