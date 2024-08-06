@@ -59,6 +59,13 @@ $currentUserId = $_SESSION['user_id'];
 </main>
 
 <script type="text/javascript">
+    const REACTION_TYPES = {
+        1: '👍',
+        2: '❤️',
+        3: '😂',
+        4: '😮',
+        5: '😢'
+    };
     var conn = new WebSocket('ws://localhost:8080');
     var chatroomId = <?= json_encode($chatroomId) ?>;
     const currentUserId = <?= json_encode($currentUserId); ?>;
@@ -80,19 +87,23 @@ $currentUserId = $_SESSION['user_id'];
         const messageData = JSON.parse(e.data);
         console.log("Current User ID:", document.getElementById('current-user-id').value);
         console.log("Message User ID:", messageData.user_id || messageData.sender_id);
-        if (messageData.chatroom_id == chatroomId) {
-            const chatBox = document.getElementById('chat-box');
-            const messageElement = createMessageElement(messageData);
-            chatBox.appendChild(messageElement);
-            chatBox.scrollTop = chatBox.scrollHeight;
-            let messages = localStorage.getItem('chatroom-' + chatroomId);
-            if (messages) {
-                messages = JSON.parse(messages);
-            } else {
-                messages = [];
+        if (messageData.type === 'reaction') {
+            updateReactionDisplay(messageData.message_id, messageData.reaction_type);
+        } else {
+            if (messageData.chatroom_id == chatroomId) {
+                const chatBox = document.getElementById('chat-box');
+                const messageElement = createMessageElement(messageData);
+                chatBox.appendChild(messageElement);
+                chatBox.scrollTop = chatBox.scrollHeight;
+                let messages = localStorage.getItem('chatroom-' + chatroomId);
+                if (messages) {
+                    messages = JSON.parse(messages);
+                } else {
+                    messages = [];
+                }
+                messages.push(messageData);
+                localStorage.setItem('chatroom-' + chatroomId, JSON.stringify(messages));
             }
-            messages.push(messageData);
-            localStorage.setItem('chatroom-' + chatroomId, JSON.stringify(messages));
         }
     };
 
@@ -172,7 +183,7 @@ $currentUserId = $_SESSION['user_id'];
                 if (data.success) {
                     alert(data.message);
                     loadSuggestedUsers();
-                    document.getElementById('suggested-username').value = ''; // Clear the input
+                    document.getElementById('suggested-username').value = '';
                 } else {
                     alert(`Error: ${data.message}`);
                 }
@@ -360,18 +371,27 @@ $currentUserId = $_SESSION['user_id'];
 
     function createMessageElement(messageData) {
         const messageElement = document.createElement('div');
-        messageElement.classList.add('p-2', 'mb-2', 'rounded-lg');
+        messageElement.classList.add('p-2', 'mb-2', 'rounded-lg', 'flex', 'justify-between', 'items-start');
+        messageElement.dataset.messageId = messageData.id;
+        messageElement.dataset.reaction = messageData.reaction_type || '';
+
+        const textElement = document.createElement('span');
+        textElement.classList.add('mr-2');
 
         const senderId = parseInt(messageData.user_id || messageData.sender_id);
         const currentUserId = parseInt(document.getElementById('current-user-id').value);
 
         if (senderId === currentUserId) {
             messageElement.classList.add('bg-blue-100', 'self-end');
-            messageElement.textContent = `You: ${messageData.message}`;
+            textElement.textContent = `You: ${messageData.message}`;
         } else {
             messageElement.classList.add('bg-gray-100', 'self-start');
-            messageElement.textContent = `${messageData.username}: ${messageData.message}`;
+            textElement.textContent = `${messageData.username}: ${messageData.message}`;
         }
+        messageElement.appendChild(textElement);
+
+        addReactionToMessage(messageElement, messageData.id, false, messageData.reaction_type);
+
         return messageElement;
     }
 
@@ -470,6 +490,102 @@ $currentUserId = $_SESSION['user_id'];
 
         loadChatroomUsers();
         loadSuggestedUsers();
+    }
+    function addReactionToMessage(messageElement, messageId, isPrivateChat, initialReaction = null) {
+        const reactionContainer = document.createElement('div');
+        reactionContainer.classList.add('reaction-container', 'flex', 'items-center', 'relative');
+
+        const reactionButton = document.createElement('button');
+        reactionButton.classList.add('reaction-button', 'ml-2', 'text-gray-500', 'hover:text-gray-700');
+
+        updateReactionButton(reactionButton, initialReaction);
+
+        const reactionPopup = document.createElement('div');
+        reactionPopup.classList.add('reaction-popup', 'hidden', 'absolute', 'bg-white', 'rounded-lg', 'shadow-md', 'p-2', 'z-10');
+        reactionPopup.style.bottom = '100%';
+        reactionPopup.style.left = '0';
+
+        Object.entries(REACTION_TYPES).forEach(([type, emoji]) => {
+            const emojiButton = document.createElement('button');
+            emojiButton.textContent = emoji;
+            emojiButton.classList.add('mr-1', 'hover:bg-gray-100', 'rounded');
+            emojiButton.onclick = function(event) {
+                event.stopPropagation();
+                sendReaction(messageId, type, isPrivateChat);
+                reactionPopup.classList.add('hidden');
+            };
+            reactionPopup.appendChild(emojiButton);
+        });
+
+        reactionButton.onclick = function(event) {
+            event.stopPropagation();
+            reactionPopup.classList.toggle('hidden');
+        };
+
+        reactionContainer.appendChild(reactionButton);
+        reactionContainer.appendChild(reactionPopup);
+        messageElement.appendChild(reactionContainer);
+
+        document.addEventListener('click', function() {
+            reactionPopup.classList.add('hidden');
+        });
+    }
+    function updateReactionButton(button, reactionType) {
+        if (reactionType && REACTION_TYPES[reactionType]) {
+            button.textContent = REACTION_TYPES[reactionType];
+            button.classList.remove('text-gray-500', 'hover:text-gray-700');
+            button.classList.add('text-blue-500', 'hover:text-blue-700');
+        } else {
+            button.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M15.5 11C16.3284 11 17 10.3284 17 9.5C17 8.67157 16.3284 8 15.5 8C14.6716 8 14 8.67157 14 9.5C14 10.3284 14.6716 11 15.5 11Z" fill="currentColor" />
+            <path d="M8.5 11C9.32843 11 10 10.3284 10 9.5C10 8.67157 9.32843 8 8.5 8C7.67157 8 7 8.67157 7 9.5C7 10.3284 7.67157 11 8.5 11Z" fill="currentColor" />
+            <path d="M12 13.5C13.1046 13.5 14 14.3954 14 15.5C14 16.6046 13.1046 17.5 12 17.5C10.8954 17.5 10 16.6046 10 15.5C10 14.3954 10.8954 13.5 12 13.5Z" fill="currentColor" />
+            <path fill-rule="evenodd" clip-rule="evenodd" d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22ZM12 20C16.4183 20 20 16.4183 20 12C20 7.58172 16.4183 4 12 4C7.58172 4 4 7.58172 4 12C4 16.4183 7.58172 20 12 20Z" fill="currentColor" />
+        </svg>`;
+            button.classList.remove('text-blue-500', 'hover:text-blue-700');
+            button.classList.add('text-gray-500', 'hover:text-gray-700');
+        }
+    }
+    function sendReaction(messageId, reactionType, isPrivateChat) {
+        const url = `/chatroom-message/${messageId}/react`;
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ reactionType: reactionType }),
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    updateReactionDisplay(messageId, reactionType);
+                    updateMessageReaction(messageId, reactionType);
+                    conn.send(JSON.stringify({
+                        type: 'reaction',
+                        message_id: messageId,
+                        reaction_type: reactionType,
+                        chatroom_id: chatroomId
+                    }));
+                }
+            })
+            .catch(error => console.error('Error:', error));
+    }
+
+    function updateMessageReaction(messageId, reactionType) {
+        const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
+        if (messageElement) {
+            messageElement.dataset.reaction = reactionType;
+        }
+    }
+    function updateReactionDisplay(messageId, reactionType) {
+        const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
+        if (messageElement) {
+            messageElement.dataset.reaction = reactionType;
+            const reactionButton = messageElement.querySelector('.reaction-button');
+            if (reactionButton) {
+                updateReactionButton(reactionButton, reactionType);
+            }
+        }
     }
 
     document.addEventListener('DOMContentLoaded', checkUserRole);

@@ -371,3 +371,13 @@ body.dark-mode .bg-blue-100 {
 .bg-violet-900{
     background-color: #362e6c;
 }
+.hidden {
+     display: none !important;
+ }
+.reaction-popup {
+    display: none;
+}
+.reaction-popup:not(.hidden) {
+    display: block;
+}
+
