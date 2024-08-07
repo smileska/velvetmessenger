@@ -381,9 +381,10 @@ body.dark-mode .bg-blue-100 {
     display: block;
 }
 
-/*body:not(.dark-mode) .reaction-popup {*/
-/*    background-color: #dfd4ff !important;*/
-/*    border: 1px solid #bca9e2 !important;*/
-/*}*/
+.reaction-button svg {
+    background: transparent;
+    border: none;
+}
+
 
 
