@@ -495,49 +495,10 @@ $currentUserId = $_SESSION['user_id'];
         loadSuggestedUsers();
     }
     function addReactionToMessage(messageElement, messageId, isPrivateChat, initialReaction = null) {
-        const reactionContainer = document.createElement('div');
-        reactionContainer.classList.add('reaction-container', 'flex', 'items-center', 'relative');
-
-        const reactionButton = document.createElement('button');
-        reactionButton.classList.add('reaction-button', 'ml-2', 'text-gray-500', 'hover:text-gray-700');
-
-        updateReactionButton(reactionButton, initialReaction);
-
-        const reactionPopup = document.createElement('div');
-        reactionPopup.classList.add('reaction-popup', 'hidden', 'absolute', 'bg-gray-100', 'rounded-lg', 'shadow-md', 'p-2', 'z-10');
-        if (messageElement.classList.contains('bg-blue-100')) {
-            reactionPopup.classList.add('bg-blue-100');
-        } else {
-            reactionPopup.classList.add('bg-gray-100');
-        }
-        reactionPopup.style.bottom = '100%';
-        reactionPopup.style.left = '0';
-
-        Object.entries(REACTION_TYPES).forEach(([type, emoji]) => {
-            const emojiButton = document.createElement('button');
-            emojiButton.textContent = emoji;
-            emojiButton.classList.add('mr-1', 'hover:bg-gray-100', 'rounded');
-            emojiButton.onclick = function(event) {
-                event.stopPropagation();
-                sendReaction(messageId, type, isPrivateChat);
-                reactionPopup.classList.add('hidden');
-            };
-            reactionPopup.appendChild(emojiButton);
-        });
-
-        reactionButton.onclick = function(event) {
-            event.stopPropagation();
-            reactionPopup.classList.toggle('hidden');
-        };
-
-        reactionContainer.appendChild(reactionButton);
-        reactionContainer.appendChild(reactionPopup);
+        const reactionContainer = createReactionContainer(messageId, isPrivateChat, initialReaction);
         messageElement.appendChild(reactionContainer);
-
-        document.addEventListener('click', function() {
-            reactionPopup.classList.add('hidden');
-        });
     }
+
     function updateReactionButton(button, reactionType) {
         if (reactionType && REACTION_TYPES[reactionType]) {
             button.textContent = REACTION_TYPES[reactionType];
@@ -595,6 +556,81 @@ $currentUserId = $_SESSION['user_id'];
             }
         }
     }
+    function positionReactionPopup(button, popup) {
+        popup.style.visibility = 'hidden';
+        popup.style.display = 'block';
+        popup.style.opacity = '0';
+        popup.offsetHeight;
+
+        const rect = button.getBoundingClientRect();
+        const popupRect = popup.getBoundingClientRect();
+
+        let top = rect.top - popupRect.height - 10;
+        let left = rect.left;
+
+        if (top < 0) {
+            top = rect.bottom + 10;
+        }
+
+        if (left + popupRect.width > window.innerWidth) {
+            left = window.innerWidth - popupRect.width - 10;
+        }
+
+        popup.style.position = 'fixed';
+        popup.style.top = `${top}px`;
+        popup.style.left = `${left}px`;
+
+        popup.style.visibility = 'visible';
+        popup.style.opacity = '1';
+    }
+    function createReactionContainer(messageId, isPrivateChat, initialReaction = null) {
+        const reactionContainer = document.createElement('div');
+        reactionContainer.classList.add('reaction-container', 'flex', 'items-center', 'relative');
+
+        const reactionButton = document.createElement('button');
+        reactionButton.classList.add('reaction-button', 'ml-2', 'text-gray-500', 'hover:text-gray-700');
+
+        updateReactionButton(reactionButton, initialReaction);
+
+        const reactionPopup = document.createElement('div');
+        reactionPopup.classList.add('reaction-popup', 'hidden', 'fixed', 'bg-white', 'rounded-lg', 'shadow-md', 'p-2', 'z-50');
+        reactionPopup.style.transition = 'opacity 0.2s ease-in-out';
+
+        Object.entries(REACTION_TYPES).forEach(([type, emoji]) => {
+            const emojiButton = document.createElement('button');
+            emojiButton.textContent = emoji;
+            emojiButton.classList.add('mr-1', 'hover:bg-gray-200', 'rounded');
+            emojiButton.onclick = function(event) {
+                event.stopPropagation();
+                sendReaction(messageId, type, isPrivateChat);
+                reactionPopup.classList.add('hidden');
+            };
+            reactionPopup.appendChild(emojiButton);
+        });
+
+        reactionButton.addEventListener('click', function(event) {
+            event.stopPropagation();
+            if (reactionPopup.classList.contains('hidden')) {
+                reactionPopup.classList.remove('hidden');
+                positionReactionPopup(reactionButton, reactionPopup);
+            } else {
+                reactionPopup.classList.add('hidden');
+            }
+        });
+
+        reactionContainer.appendChild(reactionButton);
+        reactionContainer.appendChild(reactionPopup);
+
+        return reactionContainer;
+    }
+    document.addEventListener('click', function(event) {
+        const reactionPopups = document.querySelectorAll('.reaction-popup');
+        reactionPopups.forEach(popup => {
+            if (!popup.classList.contains('hidden') && !popup.contains(event.target)) {
+                popup.classList.add('hidden');
+            }
+        });
+    });
 
     document.addEventListener('DOMContentLoaded', checkUserRole);
 
