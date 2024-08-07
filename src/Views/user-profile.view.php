@@ -20,4 +20,11 @@
         <img class="status-icon" src="ui/icons/<?= $statusIcon ?>" alt="status_img">
         <span><?= htmlspecialchars($status) ?></span>
     </div>
+    <?php if ($_SESSION['username'] !== $profileUser['username']): ?>
+        <div class="mt-4 flex justify-center">
+            <a href="/chat/<?= htmlspecialchars($profileUser['username']) ?>" class="btn-msg rounded-md px-6 py-3 text-sm font-semibold shadow-sm inline-block">
+                Message
+            </a>
+        </div>
+    <?php endif; ?>
 </div>

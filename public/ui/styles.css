@@ -407,3 +407,19 @@ body.dark-mode label.text-gray-900 {
 body.dark-mode label{
     color: #ffffff !important;
 }
+.justify-center {
+    justify-content: center;
+}
+.btn-msg {
+    background-color: #8c52ff;
+    color: #FFFFFF;
+}
+.btn-msg:hover {
+    background-color: #a87eff;
+}
+.dark-mode .btn-msg {
+    background-color: #30006c;
+}
+.dark-mode .btn-msg:hover {
+    background-color: #5500b5;
+}
