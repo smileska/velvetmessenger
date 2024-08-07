@@ -49,6 +49,12 @@ body.dark-mode {
 .btn-primary:hover {
     background-color: #a87eff;
 }
+.dark-mode .btn-primary {
+    background-color: #14002b;
+}
+.dark-mode .btn-primary:hover {
+    background-color: #2a0059;
+}
 #moonIcon{
     width: 30px;
     height: 30px;
@@ -358,6 +364,7 @@ body.dark-mode .bg-gray-100 {
 body.dark-mode .bg-blue-100 {
     background-color: #180047;
 }
+
 .bg-gray-100 {
     background-color: #e1e1e1;
 }
@@ -385,6 +392,18 @@ body.dark-mode .bg-blue-100 {
     background: transparent;
     border: none;
 }
-
-
-
+.dark-mode.container2 h2{
+    color: white;
+}
+body.dark-mode h2.text-gray-900 {
+    color: #ffffff !important;
+}
+body.dark-mode .register-heading {
+    color: #ffffff !important;
+}
+body.dark-mode label.text-gray-900 {
+    color: #ffffff !important;
+}
+body.dark-mode label{
+    color: #ffffff !important;
+}
