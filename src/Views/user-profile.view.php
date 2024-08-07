@@ -1,19 +1,23 @@
-<?php $title = htmlspecialchars($user['username']) . "'s Profile"; ?>
+<?php $title = htmlspecialchars($profileUser['username']) . "'s Profile"; ?>
 <?php require('parts/head.php') ?>
 <?php require('parts/navbar.php') ?>
 
 <header class="bg-color banner-shadow">
     <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <h1 class="text-3xl font-bold tracking-tight text-gray-900 banner-text">
-            <?= htmlspecialchars($user['username']) ?>'s Profile
+            <?= htmlspecialchars($profileUser['username']) ?>'s Profile
         </h1>
     </div>
 </header>
 
 <div class="profile-container mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-    <img class="profile-image" src="<?= !empty($user['image']) ? htmlspecialchars($user['image']) : "ui/icons/default.png" ?>" alt="User Image">
+    <img class="profile-image" src="<?= !empty($profileUser['image']) ? htmlspecialchars($profileUser['image']) : "ui/icons/default.png" ?>" alt="User Image">
     <div class="status-container">
-        <img class="status-icon" src="ui/icons/onlajn.png" alt="status_img">
-        <span>Online</span>
+        <?php
+        $status = isset($profileUser['status']) ? $profileUser['status'] : 'Offline';
+        $statusIcon = ($status === 'Online') ? 'onlajn.png' : 'oflajn.png';
+        ?>
+        <img class="status-icon" src="ui/icons/<?= $statusIcon ?>" alt="status_img">
+        <span><?= htmlspecialchars($status) ?></span>
     </div>
 </div>
