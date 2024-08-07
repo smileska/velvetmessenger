@@ -235,7 +235,7 @@ return function (App $app) {
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['username'] = $username;
             $_SESSION['image'] = $user['image'];
-            $stmt = $pdo->prepare('UPDATE users SET status = \'Online\' WHERE username = :username');
+            updateUserStatus($pdo, $username, 'Online');
             $stmt->execute(['username' => $username]);
             return $response->withHeader('Location', '/')->withStatus(302);
         } else {
@@ -246,16 +246,18 @@ return function (App $app) {
         }
     });
 
-    $app->get('/logout', function (Request $request, Response $response, $args) {
+    $app->get('/logout', function (Request $request, Response $response, $args) use ($container) {
 //    if (isset($_SESSION['username'])) {
 //        $username = $_SESSION['username'];
 //        $stmt = $pdo->prepare('UPDATE users SET status = "Offline" WHERE username = :username');
 //        $stmt->execute(['username' => $username]);
 //    }
-        logout();
-        $html = view('index.view.php');
-        $response->getBody()->write($html);
-        return $response->withStatus(200);
+        $pdo = $container->get(PDO::class);
+        if (isset($_SESSION['username'])) {
+            updateUserStatus($pdo, $_SESSION['username'], 'Offline');
+        }
+        session_destroy();
+        return $response->withHeader('Location', '/')->withStatus(302);
     });
 
     $app->add(function (Request $request, $handler) {
@@ -283,13 +285,14 @@ return function (App $app) {
         $user = $stmt->fetch();
 
         if ($user) {
-            $html = view('profile.view.php', ['user' => $user]);
+            $html = view('user-profile.view.php', ['user' => $user]);
             $response->getBody()->write($html);
             return $response;
         } else {
             return $response->withStatus(404)->write('User not found');
         }
     });
+
     $app->post('/update-profile-picture', function (Request $request, Response $response, $args) use ($container) {
         $pdo = $container->get(PDO::class);
         if (!isset($_SESSION['username'])) {
@@ -445,12 +448,15 @@ return function (App $app) {
 
     $app->get('/{username}', function (Request $request, Response $response, $args) use ($container) {
         $pdo = $container->get(PDO::class);
-        $username = $args['username'];
+
+        $profileUsername = $args['username'];
+
         $stmt = $pdo->prepare('SELECT * FROM users WHERE username = :username');
-        $stmt->execute(['username' => $username]);
-        $user = $stmt->fetch();
-        if ($user) {
-            $html = view('user-profile.view.php', ['user' => $user]);
+        $stmt->execute(['username' => $profileUsername]);
+        $profileUser = $stmt->fetch();
+
+        if ($profileUser) {
+            $html = view('user-profile.view.php', ['profileUser' => $profileUser]);
             $response->getBody()->write($html);
             return $response;
         } else {
@@ -991,5 +997,8 @@ return function (App $app) {
         return $response->withHeader('Content-Type', 'application/json');
     });
 
-
+    function updateUserStatus($pdo, $username, $status) {
+        $stmt = $pdo->prepare('UPDATE users SET status = :status WHERE username = :username');
+        $stmt->execute(['status' => $status, 'username' => $username]);
+    }
 };
