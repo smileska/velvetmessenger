@@ -13,7 +13,7 @@ require('parts/navbar.php');
         <form method="post" id="chat-form" class="mt-4 flex">
             <input type="hidden" id="recipient" value="<?= htmlspecialchars($chatUser['username']); ?>">
             <input type="text" id="message" placeholder="Type your message here" required class="flex-grow p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100">
-            <button type="submit" class="btn-primary ml-3 px-4 py-1 bg-blue-100 text-white rounded-lg shadow hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:ring-opacity-50">Send</button>
+            <button type="submit" class="btn-primary bg-blue-100 ml-3 px-4 py-1 text-white rounded-lg shadow hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:ring-opacity-50">Send</button>
         </form>
     </div>
 </main>
