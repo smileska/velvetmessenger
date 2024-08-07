@@ -126,6 +126,12 @@ require('parts/navbar.php');
         messageElement.appendChild(textElement);
 
         const reactionContainer = createReactionContainer(messageData.id, true, messageData.reaction_type);
+        const reactionPopup = reactionContainer.querySelector('.reaction-popup');
+        if (messageElement.classList.contains('bg-blue-100')) {
+            reactionPopup.classList.add('bg-blue-100');
+        } else {
+            reactionPopup.classList.add('bg-gray-100');
+        }
         messageElement.appendChild(reactionContainer);
 
         return messageElement;
@@ -134,7 +140,7 @@ require('parts/navbar.php');
         console.log('Creating reaction container:', { messageId, isPrivateChat, initialReaction });
 
         const reactionContainer = document.createElement('div');
-        reactionContainer.classList.add('reaction-container', 'flex', 'items-center', 'relative', 'ml-auto');
+        reactionContainer.classList.add('reaction-container', 'flex', 'items-center', 'relative', 'ml-auto', 'rounded-lg');
 
         const reactionButton = document.createElement('button');
         reactionButton.classList.add('reaction-button', 'ml-2', 'text-gray-500', 'hover:text-gray-700');
@@ -151,8 +157,8 @@ require('parts/navbar.php');
 
         if (initialReaction) {
             reactionButton.textContent = REACTION_TYPES[initialReaction];
-            reactionButton.classList.remove('text-gray-500', 'hover:text-gray-700');
-            reactionButton.classList.add('text-blue-500', 'hover:text-blue-700');
+            reactionButton.classList.remove('text-gray-100', 'hover:text-gray-100');
+            reactionButton.classList.add('text-blue-100', 'hover:text-blue-100');
         }
 
         const reactionPopup = document.createElement('div');
@@ -225,8 +231,8 @@ require('parts/navbar.php');
             emojiSpan.textContent = REACTION_TYPES[initialReaction];
             emojiSpan.classList.remove('hidden');
             reactionButton.querySelector('svg').classList.add('hidden');
-            reactionButton.classList.remove('text-gray-500', 'hover:text-gray-700');
-            reactionButton.classList.add('text-blue-500', 'hover:text-blue-700');
+            reactionButton.classList.remove('text-gray-100', 'hover:text-gray-100');
+            reactionButton.classList.add('text-blue-100', 'hover:text-blue-100');
         } else {
             reactionButton.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M15.5 11C16.3284 11 17 10.3284 17 9.5C17 8.67157 16.3284 8 15.5 8C14.6716 8 14 8.67157 14 9.5C14 10.3284 14.6716 11 15.5 11Z" fill="currentColor" />
@@ -282,6 +288,12 @@ require('parts/navbar.php');
             const messageId = message.dataset.messageId;
             const existingReaction = message.dataset.reaction;
             const newReactionContainer = createReactionContainer(messageId, true, existingReaction);
+            const reactionPopup = newReactionContainer.querySelector('.reaction-popup');
+            if (message.classList.contains('bg-blue-100')) {
+                reactionPopup.classList.add('bg-blue-100');
+            } else {
+                reactionPopup.classList.add('bg-gray-100');
+            }
             const oldReactionContainer = message.querySelector('.reaction-container');
             if (oldReactionContainer) {
                 message.replaceChild(newReactionContainer, oldReactionContainer);
@@ -345,12 +357,12 @@ require('parts/navbar.php');
             if (reactionButton) {
                 if (reactionType && REACTION_TYPES[reactionType]) {
                     reactionButton.textContent = REACTION_TYPES[reactionType];
-                    reactionButton.classList.remove('text-gray-500', 'hover:text-gray-700');
-                    reactionButton.classList.add('text-blue-500', 'hover:text-blue-700');
+                    reactionButton.classList.remove('text-gray-100', 'hover:text-gray-100');
+                    reactionButton.classList.add('text-blue-100', 'hover:text-blue-100');
                 } else {
                     reactionButton.innerHTML = svgIcon;
-                    reactionButton.classList.remove('text-blue-500', 'hover:text-blue-700');
-                    reactionButton.classList.add('text-gray-500', 'hover:text-gray-700');
+                    reactionButton.classList.remove('text-blue-100', 'hover:text-blue-100');
+                    reactionButton.classList.add('text-gray-100', 'hover:text-gray-100');
                 }
             }
         }
@@ -373,8 +385,8 @@ require('parts/navbar.php');
     function updateReactionButton(button, reactionType) {
         if (reactionType && REACTION_TYPES[reactionType]) {
             button.textContent = REACTION_TYPES[reactionType];
-            button.classList.remove('text-gray-500', 'hover:text-gray-700');
-            button.classList.add('text-blue-500', 'hover:text-blue-700');
+            button.classList.remove('text-gray-100', 'hover:text-gray-100');
+            button.classList.add('text-blue-100', 'hover:text-blue-100');
         } else {
             button.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M15.5 11C16.3284 11 17 10.3284 17 9.5C17 8.67157 16.3284 8 15.5 8C14.6716 8 14 8.67157 14 9.5C14 10.3284 14.6716 11 15.5 11Z" fill="currentColor" />
@@ -382,8 +394,8 @@ require('parts/navbar.php');
                 <path d="M12 13.5C13.1046 13.5 14 14.3954 14 15.5C14 16.6046 13.1046 17.5 12 17.5C10.8954 17.5 10 16.6046 10 15.5C10 14.3954 10.8954 13.5 12 13.5Z" fill="currentColor" />
                 <path fill-rule="evenodd" clip-rule="evenodd" d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22ZM12 20C16.4183 20 20 16.4183 20 12C20 7.58172 16.4183 4 12 4C7.58172 4 4 7.58172 4 12C4 16.4183 7.58172 20 12 20Z" fill="currentColor" />
             </svg>`;
-            button.classList.remove('text-blue-500', 'hover:text-blue-700');
-            button.classList.add('text-gray-500', 'hover:text-gray-700');
+            button.classList.remove('text-blue-100', 'hover:text-blue-100');
+            button.classList.add('text-gray-100', 'hover:text-gray-100');
         }
     }
 </script>
