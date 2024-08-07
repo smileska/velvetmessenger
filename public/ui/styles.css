@@ -423,3 +423,15 @@ body.dark-mode label{
 .dark-mode .btn-msg:hover {
     background-color: #5500b5;
 }
+.dark-mode input[type="text"],
+.dark-mode input[type="password"],
+.dark-mode input[type="file"],
+.dark-mode textarea {
+    color: #000000;
+}
+
+.dark-mode input[type="text"]::placeholder,
+.dark-mode input[type="password"]::placeholder,
+.dark-mode textarea::placeholder {
+    color: #535353;
+}
