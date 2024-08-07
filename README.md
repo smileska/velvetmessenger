@@ -1,7 +1,5 @@
 # VelvetMessenger
 
-[![Coverage Status](https://coveralls.io/repos/github/slimphp/Slim-Skeleton/badge.svg?branch=master)](https://coveralls.io/github/slimphp/Slim-Skeleton?branch=master)
-
 VelvetMessenger is a PHP-based messaging application that uses the Slim Framework for routing and Symfony components for verification. It includes user authentication, profile management, and chat functionality. The application leverages Docker for environment setup and PostgreSQL as the database.
 
 ## Table of Contents
