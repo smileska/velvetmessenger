@@ -275,6 +275,7 @@ return function (App $app) {
 
     $app->get('/profile', function (Request $request, Response $response, $args) use ($container) {
         $pdo = $container->get(PDO::class);
+
         if (!isset($_SESSION['username'])) {
             return $response->withHeader('Location', '/login')->withStatus(302);
         }
@@ -285,7 +286,7 @@ return function (App $app) {
         $user = $stmt->fetch();
 
         if ($user) {
-            $html = view('user-profile.view.php', ['user' => $user]);
+            $html = view('profile.view.php', ['user' => $user]);
             $response->getBody()->write($html);
             return $response;
         } else {
