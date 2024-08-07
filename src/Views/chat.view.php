@@ -13,7 +13,7 @@ require('parts/navbar.php');
         <form method="post" id="chat-form" class="mt-4 flex">
             <input type="hidden" id="recipient" value="<?= htmlspecialchars($chatUser['username']); ?>">
             <input type="text" id="message" placeholder="Type your message here" required class="flex-grow p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100">
-            <button type="submit" class="btn-primary bg-blue-100 ml-3 px-4 py-1 text-white rounded-lg shadow hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:ring-opacity-50">Send</button>
+            <button type="submit" class="btn-primary ml-3 px-4 py-1 text-white rounded-lg shadow hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:ring-opacity-50">Send</button>
         </form>
     </div>
 </main>
@@ -162,12 +162,19 @@ require('parts/navbar.php');
         }
 
         const reactionPopup = document.createElement('div');
-        reactionPopup.classList.add('reaction-popup', 'hidden', 'absolute', 'bg-gray-100', 'rounded-lg', 'shadow-md', 'p-2', 'z-10');
+        reactionPopup.classList.add('reaction-popup', 'hidden', 'fixed', 'rounded-lg', 'shadow-md', 'p-2', 'z-50');
+        reactionPopup.style.transition = 'opacity 0.2s ease-in-out';
 
 
-        reactionPopup.style.bottom = '100%';
-        reactionPopup.style.left = '0';
-        reactionPopup.style.transform = 'translateY(-10px)';
+        reactionButton.addEventListener('click', function(event) {
+            event.stopPropagation();
+            if (reactionPopup.classList.contains('hidden')) {
+                reactionPopup.classList.remove('hidden');
+                positionReactionPopup(reactionButton, reactionPopup);
+            } else {
+                reactionPopup.classList.add('hidden');
+            }
+        });
 
 
         Object.entries(REACTION_TYPES).forEach(([type, emoji]) => {
@@ -184,13 +191,48 @@ require('parts/navbar.php');
         console.log('Reaction container created:', reactionContainer);
         return reactionContainer;
     }
+    function positionReactionPopup(button, popup) {
+        popup.style.visibility = 'hidden';
+        popup.style.display = 'block';
+        popup.style.opacity = '0';
+
+        popup.offsetHeight;
+
+        const rect = button.getBoundingClientRect();
+        const popupRect = popup.getBoundingClientRect();
+
+        let top = rect.top - popupRect.height - 10;
+        let left = rect.left;
+
+        if (top < 0) {
+            top = rect.bottom + 10;
+        }
+
+        if (left + popupRect.width > window.innerWidth) {
+            left = window.innerWidth - popupRect.width - 10;
+        }
+
+        popup.style.position = 'fixed';
+        popup.style.top = `${top}px`;
+        popup.style.left = `${left}px`;
+
+        popup.style.visibility = 'visible';
+        popup.style.opacity = '1';
+    }
+
+
     document.addEventListener('click', function(event) {
         const reactionButton = event.target.closest('.reaction-button');
         if (reactionButton) {
             console.log('Reaction button clicked');
             event.stopPropagation();
             const reactionPopup = reactionButton.nextElementSibling;
-            reactionPopup.classList.toggle('hidden');
+            if (reactionPopup.classList.contains('hidden')) {
+                reactionPopup.classList.remove('hidden');
+                positionReactionPopup(reactionButton, reactionPopup);
+            } else {
+                reactionPopup.classList.add('hidden');
+            }
         }
         const emojiButton = event.target.closest('.reaction-popup button');
         if (emojiButton) {
@@ -201,6 +243,12 @@ require('parts/navbar.php');
             sendReaction(messageId, reactionType, true);
             emojiButton.closest('.reaction-popup').classList.add('hidden');
         }
+    });
+    window.addEventListener('resize', function() {
+        document.querySelectorAll('.reaction-popup:not(.hidden)').forEach(popup => {
+            const button = popup.previousElementSibling;
+            positionReactionPopup(button, popup);
+        });
     });
     document.addEventListener('click', function() {
         document.querySelectorAll('.reaction-popup').forEach(popup => {
