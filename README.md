@@ -49,6 +49,15 @@ docker exec -it velvetmessenger-app /bin/bash
 ```bash
 composer install
 ```
+3. Switch to the postgres User:
+```bash
+su - postgres
+```
+4. Create the Database:
+```bash
+psql -U example -d velvet -f /docker-entrypoint-initdb.d/init.sql
+```
+This will execute the SQL file that initializes your database with the required tables and data.
 
 ## Usage
 
