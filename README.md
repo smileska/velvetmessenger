@@ -41,9 +41,14 @@ cd velvetmessenger
 docker-compose up -d
 ```
 ### Install PHP Dependencies
-```bash
-composer install
-```
+    1. Access the Container's Shell:
+    ```bash
+    docker exec -it velvetmessenger-app /bin/bash
+    ```
+    2. Run Composer Install:
+    ```bash
+    composer install
+    ```
 
 ## Usage
 
