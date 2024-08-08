@@ -94,7 +94,17 @@ CREATE TABLE "public"."invite_requests" (
                                             CONSTRAINT "invite_requests_invitee_id_fkey" FOREIGN KEY ("invitee_id") REFERENCES "public"."users"("id"),
                                             PRIMARY KEY ("id")
 );
+CREATE SEQUENCE IF NOT EXISTS messages_id_seq;
 
+-- Table Definition for messages table
+CREATE TABLE "public"."messages" (
+                                     "id" int8 NOT NULL DEFAULT nextval('messages_id_seq'::regclass),
+                                     "sender" text NOT NULL,
+                                     "recipient" text NOT NULL,
+                                     "message" text NOT NULL,
+                                     "timestamp" timestamp DEFAULT CURRENT_TIMESTAMP,
+                                     PRIMARY KEY ("id")
+);
 -- Sequence and defined type for message_reactions table
 CREATE SEQUENCE IF NOT EXISTS message_reactions_id_seq;
 
@@ -114,17 +124,6 @@ CREATE TABLE "public"."message_reactions" (
 CREATE UNIQUE INDEX unique_message_user ON public.message_reactions USING btree (message_id, user_id);
 
 -- Sequence and defined type for messages table
-CREATE SEQUENCE IF NOT EXISTS messages_id_seq;
-
--- Table Definition for messages table
-CREATE TABLE "public"."messages" (
-                                     "id" int8 NOT NULL DEFAULT nextval('messages_id_seq'::regclass),
-                                     "sender" text NOT NULL,
-                                     "recipient" text NOT NULL,
-                                     "message" text NOT NULL,
-                                     "timestamp" timestamp DEFAULT CURRENT_TIMESTAMP,
-                                     PRIMARY KEY ("id")
-);
 
 -- Sequence and defined type for suggested_users table
 CREATE SEQUENCE IF NOT EXISTS suggested_users_id_seq;
