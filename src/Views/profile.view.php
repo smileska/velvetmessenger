@@ -31,7 +31,7 @@
                 <label for="password_for_username" class="block mb-2">Confirm Password:</label>
                 <input type="password" name="password_for_username" id="password_for_username" required class="w-full px-3 py-2 border rounded-md">
             </div>
-            <button type="submit" class="flex w-full justify-center rounded-md btn-primary px-3 py-1.5 text-sm font-semibold leading-6 shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">Change Username</button>
+            <button type="submit" class="flex w-full justify-center rounded-md btn-msg px-3 py-1.5 text-sm font-semibold leading-6 shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">Change Username</button>
         </form>
     </div>
 
@@ -50,7 +50,7 @@
                 <label for="confirm_new_password" class="block mb-2">Confirm New Password:</label>
                 <input type="password" name="confirm_new_password" id="confirm_new_password" required class="w-full px-3 py-2 border rounded-md">
             </div>
-            <button type="submit" class="flex w-full justify-center rounded-md btn-primary px-3 py-1.5 text-sm font-semibold leading-6 shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">Change Password</button>
+            <button type="submit" class="flex w-full justify-center rounded-md btn-msg px-3 py-1.5 text-sm font-semibold leading-6 shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">Change Password</button>
         </form>
     </div>
 </div>

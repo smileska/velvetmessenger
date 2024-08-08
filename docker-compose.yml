@@ -29,10 +29,10 @@
             environment:
                 POSTGRES_USER: example
                 POSTGRES_PASSWORD: example
-                POSTGRES_DB: example
+                POSTGRES_DB: velvet
             volumes:
                 - db_data:/var/lib/postgresql/data
-                - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+                -  D:/xampp/htdocs/velvetmessenger/init.sql/init.sql:/docker-entrypoint-initdb.d/init.sql
             ports:
                 - "5433:5432"
 
