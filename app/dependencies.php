@@ -1,30 +1,27 @@
 <?php
 
-declare(strict_types=1);
-
-use App\Application\Settings\SettingsInterface;
 use DI\ContainerBuilder;
-use Monolog\Handler\StreamHandler;
-use Monolog\Logger;
-use Monolog\Processor\UidProcessor;
 use Psr\Container\ContainerInterface;
-use Psr\Log\LoggerInterface;
+use PHPMailer\PHPMailer\PHPMailer;
 
 return function (ContainerBuilder $containerBuilder) {
     $containerBuilder->addDefinitions([
-        LoggerInterface::class => function (ContainerInterface $c) {
-            $settings = $c->get(SettingsInterface::class);
-
-            $loggerSettings = $settings->get('logger');
-            $logger = new Logger($loggerSettings['name']);
-
-            $processor = new UidProcessor();
-            $logger->pushProcessor($processor);
-
-            $handler = new StreamHandler($loggerSettings['path'], $loggerSettings['level']);
-            $logger->pushHandler($handler);
-
-            return $logger;
-        },
+    'config' => function () {
+        return require __DIR__ . '/../config.php';
+    },
+    PDO::class => function (ContainerInterface $c) {
+        $config = $c->get('config');
+        $pdo = new PDO($config['dsn'], $config['db_user'], $config['db_password']);
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        return $pdo;
+    },
+    PHPMailer::class => function () {
+        $mail = new PHPMailer(true);
+        $mail->isSMTP();
+        $mail->Host = 'mailhog';
+        $mail->SMTPAuth = false;
+        $mail->Port = 1025;
+        return $mail;
+    },
     ]);
 };
