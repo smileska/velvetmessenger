@@ -1,30 +1,24 @@
 <?php
 
-use DI\Container;
-use DI\ContainerBuilder;
-use Slim\Factory\AppFactory;
 use App\Chatroom;
-use App\Chat;
+use Controllers\UserController;
+use Controllers\AuthController;
+use Controllers\ChatController;
+use Controllers\ChatroomController;
+use Controllers\ProfileController;
+use DI\ContainerBuilder;
+use Psr\Container\ContainerInterface;
+use Slim\Factory\AppFactory;
+
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
 require __DIR__ . '/../vendor/autoload.php';
 $config = require __DIR__ . '/../config.php';
 
 $containerBuilder = new ContainerBuilder();
-$containerBuilder->addDefinitions([
-    'config' => $config,
-    PDO::class => function (Container $c) {
-        $config = $c->get('config');
-        $pdo = new PDO($config['dsn'], $config['db_user'], $config['db_password']);
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        return $pdo;
-    },
-    Chatroom::class => function (Container $c) {
-        return new Chatroom($c->get(PDO::class));
-    },
-    Chat::class => function (Container $c) {
-        return new Chat($c->get(PDO::class));
-    },
-]);
+$dependencies = require __DIR__ . '/../app/dependencies.php';
+$dependencies($containerBuilder);
 
 try {
     $container = $containerBuilder->build();
@@ -37,25 +31,36 @@ $app = AppFactory::create();
 
 $app->addBodyParsingMiddleware();
 $app->addRoutingMiddleware();
+
 $errorMiddleware = $app->addErrorMiddleware(
     $config['settings']['displayErrorDetails'],
     $config['settings']['logErrors'],
     $config['settings']['logErrorDetails']
 );
 
-$dsn = $config['dsn'];
-$dbUser = $config['db_user'];
-$dbPassword = $config['db_password'];
+$container->set(UserController::class, function (ContainerInterface $container) {
+    return new UserController($container->get(PDO::class));
+});
 
-try {
-    $pdo = new PDO($dsn, $dbUser, $dbPassword);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    $GLOBALS['pdo'] = $pdo;
-} catch (PDOException $e) {
-    die('Database connection failed: ' . $e->getMessage());
-}
+$container->set(AuthController::class, function (ContainerInterface $container) {
+    return new AuthController($container->get(PDO::class));
+});
 
-$GLOBALS['pdo'] = $pdo;
+$container->set(ChatController::class, function (ContainerInterface $container) {
+    return new ChatController($container->get(PDO::class));
+});
+
+$container->set(Chatroom::class, function (ContainerInterface $container) {
+    return new Chatroom($container->get(PDO::class));
+});
+
+$container->set(ChatroomController::class, function (ContainerInterface $container) {
+    return new ChatroomController($container->get(PDO::class), $container->get(Chatroom::class));
+});
+
+$container->set(ProfileController::class, function (ContainerInterface $container) {
+    return new ProfileController($container->get(PDO::class));
+});
 
 require __DIR__ . '/../functions.php';
 

@@ -54,6 +54,7 @@
     },
     "autoload": {
         "psr-4": {
+            "Controllers\\": "controllers/",
             "App\\": "src/"
         }
     },
