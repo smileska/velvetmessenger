@@ -20,15 +20,13 @@ class SpeechToText {
             $response = $this->client->request('POST', 'https://api.assemblyai.com/v2/upload', [
                 'headers' => [
                     'authorization' => $this->apiKey,
+                    'Content-Type' => 'audio/mpeg'
                 ],
                 'multipart' => [
                     [
                         'name'     => 'file',
                         'contents' => fopen($audioFilePath, 'r'),
-                        'filename' => basename($audioFilePath),
-                        'headers'  => [
-                            'Content-Type' => 'audio/mpeg'
-                        ]
+                        'filename' => basename($audioFilePath)
                     ]
                 ]
             ]);
