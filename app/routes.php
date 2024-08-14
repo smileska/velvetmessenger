@@ -58,19 +58,6 @@ return function (App $app) {
     $app->get('/login', function (Request $request, Response $response) use ($container) {
         return $container->get(AuthController::class)->showLogin($request, $response);
     });
-
-    $app->add(function (Request $request, $handler) {
-        $uri = $request->getUri()->getPath();
-        if (preg_match('/^\/ui\/icons\/.+\.(png|jpg|jpeg|gif|css|js)$/', $uri)) {
-            $file = __DIR__ . '/../public' . $uri;
-            if (file_exists($file)) {
-                $response = new \Slim\Psr7\Response();
-                $response->getBody()->write(file_get_contents($file));
-                return $response->withHeader('Content-Type', mime_content_type($file));
-            }
-        }
-        return $handler->handle($request);
-    });
     $app->get('/profile', function (Request $request, Response $response) use ($container) {
         return $container->get(ProfileController::class)->showProfile($request, $response);
     });
@@ -193,6 +180,9 @@ return function (App $app) {
         $stmt->execute(['status' => $status, 'username' => $username]);
     }
 
+    $app->post('/speech-to-text', function (Request $request, Response $response) use ($container) {
+        return $container->get(ChatController::class)->handleSpeechToText($request, $response);
+    });
 
 
 };

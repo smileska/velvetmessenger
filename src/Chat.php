@@ -47,30 +47,30 @@ class Chat implements MessageComponentInterface {
         }
     }
     private function handleReaction($data) {
-    if (isset($data['chatroom_id'])) {
-        $stmt = $this->pdo->prepare('
+        if (isset($data['chatroom_id'])) {
+            $stmt = $this->pdo->prepare('
             INSERT INTO chatroom_message_reactions (chatroom_message_id, user_id, reaction_type) 
             VALUES (:message_id, :user_id, :reaction_type)
             ON CONFLICT (chatroom_message_id, user_id) 
             DO UPDATE SET reaction_type = :reaction_type
         ');
-    } else {
-        $stmt = $this->pdo->prepare('
+        } else {
+            $stmt = $this->pdo->prepare('
             INSERT INTO message_reactions (message_id, user_id, reaction_type) 
             VALUES (:message_id, :user_id, :reaction_type)
             ON CONFLICT (message_id, user_id) 
             DO UPDATE SET reaction_type = :reaction_type
         ');
+        }
+        $stmt->execute([
+            'message_id' => $data['message_id'],
+            'user_id' => $data['user_id'],
+            'reaction_type' => $data['reaction_type']
+        ]);
+        foreach ($this->clients as $client) {
+            $client->send(json_encode($data));
+        }
     }
-    $stmt->execute([
-        'message_id' => $data['message_id'],
-        'user_id' => $data['user_id'],
-        'reaction_type' => $data['reaction_type']
-    ]);
-    foreach ($this->clients as $client) {
-        $client->send(json_encode($data));
-    }
-}
 
     private function handleChatroomMessage($data) {
         if (!isset($data['chatroom_id']) || !isset($data['sender_id']) || !isset($data['message'])) {
