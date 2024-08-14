@@ -82,7 +82,6 @@ $currentUserId = $_SESSION['user_id'];
     const currentUserId = <?= json_encode($currentUserId); ?>;
 
     conn.onopen = function(e) {
-        console.log("Connection established!");
     };
 
     window.addEventListener('load', loadChatroomUsers);
@@ -94,10 +93,7 @@ $currentUserId = $_SESSION['user_id'];
         loadSuggestedUsers();
     });
     conn.onmessage = function(e) {
-        console.log("Received message:", e.data);
         const messageData = JSON.parse(e.data);
-        console.log("Current User ID:", document.getElementById('current-user-id').value);
-        console.log("Message User ID:", messageData.user_id || messageData.sender_id);
         if (messageData.type === 'reaction') {
             updateReactionDisplay(messageData.message_id, messageData.reaction_type);
         } else {
@@ -119,11 +115,9 @@ $currentUserId = $_SESSION['user_id'];
     };
 
     conn.onerror = function(error) {
-        console.log('WebSocket Error: ' + error);
     };
 
     conn.onclose = function(e) {
-        console.log('WebSocket Connection Closed. Reconnecting...');
         setTimeout(function() {
             conn = new WebSocket('ws://localhost:8080');
         }, 1000);
@@ -411,15 +405,10 @@ $currentUserId = $_SESSION['user_id'];
     });
 
     document.addEventListener('DOMContentLoaded', function() {
-        console.log('DOM fully loaded');
-
         const leaveChatroomForm = document.getElementById('leave-chatroom-form');
-        console.log('Leave chatroom form:', leaveChatroomForm);
 
         if (leaveChatroomForm) {
-            console.log('Adding event listener to leave chatroom form');
             leaveChatroomForm.addEventListener('submit', function(event) {
-                console.log('Leave chatroom form submitted');
                 event.preventDefault();
                 leaveChatroom();
             });
@@ -429,21 +418,14 @@ $currentUserId = $_SESSION['user_id'];
 
         const leaveButton = document.querySelector('#leave-chatroom-form button');
         if (leaveButton) {
-            console.log('Adding click event listener to leave button');
             leaveButton.addEventListener('click', function(event) {
-                console.log('Leave button clicked');
                 event.preventDefault();
                 leaveChatroom();
             });
-        } else {
-            console.error('Leave button not found');
         }
     });
 
     function leaveChatroom() {
-        console.log('leaveChatroom function called');
-        console.log('Chatroom ID:', chatroomId);
-
         fetch(`/chatroom/${chatroomId}/leave`, {
             method: 'POST',
             headers: {
@@ -451,25 +433,20 @@ $currentUserId = $_SESSION['user_id'];
             },
         })
             .then(response => {
-                console.log('Received response:', response);
                 if (!response.ok) {
                     throw new Error('Network response was not ok');
                 }
                 return response.json();
             })
             .then(data => {
-                console.log('Received data:', data);
                 alert(data.message);
                 window.location.href = '/';
             })
             .catch(error => {
-                console.error('Error:', error);
                 alert('An error occurred while leaving the chatroom: ' + error.message);
             });
     }
-    console.log('Initial chatroomId:', chatroomId);
     let isAdmin = false;
-
     let userRole = 'guest';
 
     function checkUserRole() {
@@ -662,7 +639,6 @@ $currentUserId = $_SESSION['user_id'];
 
                 mediaRecorder.onstop = async () => {
                     const audioBlob = new Blob(audioChunks, { type: 'audio/mpeg' });
-                    console.log('Audio Blob:', audioBlob);
 
                     const formData = new FormData();
                     formData.append('audio', audioBlob, 'speech.mp3');
@@ -674,12 +650,9 @@ $currentUserId = $_SESSION['user_id'];
                         });
 
                         const transcribedText = await response.text();
-                        console.log('Transcription Response:', transcribedText);
 
                         if (response.ok) {
                             messageInput.value = transcribedText;
-                        } else {
-                            console.error('Transcription failed:', transcribedText);
                         }
                     } catch (error) {
                         console.error('Error:', error);
@@ -710,8 +683,6 @@ $currentUserId = $_SESSION['user_id'];
 
                 if (response.ok) {
                     messageInput.value = transcribedText;
-                } else {
-                    console.error('Transcription failed:', transcribedText);
                 }
             } catch (error) {
                 console.error('Error:', error);
