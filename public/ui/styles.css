@@ -435,3 +435,6 @@ body.dark-mode label{
 .dark-mode textarea::placeholder {
     color: #535353;
 }
+.recording {
+    background-color: red !important;
+}

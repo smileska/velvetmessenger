@@ -13,8 +13,14 @@ require('parts/navbar.php');
         <form method="post" id="chat-form" class="mt-4 flex">
             <input type="hidden" id="recipient" value="<?= htmlspecialchars($chatUser['username']); ?>">
             <input type="text" id="message" placeholder="Type your message here" required class="flex-grow p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100">
+            <button type="button" id="upload-audio-btn" class="ml-2 p-2 rounded-full hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
+                </svg>
+            </button>
             <button type="submit" class="btn-primary ml-3 px-4 py-1 text-white rounded-lg shadow hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:ring-opacity-50">Send</button>
         </form>
+        <input type="file" id="audio-file-input" accept="audio/*" style="display:none;">
     </div>
 </main>
 <script type="text/javascript">
@@ -446,4 +452,88 @@ require('parts/navbar.php');
             button.classList.add('text-gray-100', 'hover:text-gray-100');
         }
     }
+    document.addEventListener('DOMContentLoaded', function () {
+        const uploadAudioBtn = document.getElementById('upload-audio-btn');
+        const audioFileInput = document.getElementById('audio-file-input');
+        const messageInput = document.getElementById('message');
+        let mediaRecorder;
+        let audioChunks = [];
+        const svgIcon = uploadAudioBtn.querySelector('svg').outerHTML;
+        uploadAudioBtn.addEventListener('click', async () => {
+            if (uploadAudioBtn.textContent.trim() === '') {
+                uploadAudioBtn.textContent = '⏹️';
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+
+                mediaRecorder.ondataavailable = event => {
+                    audioChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/mpeg' });
+                    console.log('Audio Blob:', audioBlob);
+
+                    // const audioUrl = URL.createObjectURL(audioBlob);
+                    // const a = document.createElement('a');
+                    // a.href = audioUrl;
+                    // a.download = 'recorded_audio.mp3';
+                    // document.body.appendChild(a);
+                    // a.click();
+                    // URL.revokeObjectURL(audioUrl);
+
+                    const formData = new FormData();
+                    formData.append('audio', audioBlob, 'speech.mp3');
+
+                    try {
+                        const response = await fetch('/speech-to-text', {
+                            method: 'POST',
+                            body: formData
+                        });
+
+                        const transcribedText = await response.text();
+                        console.log('Transcription Response:', transcribedText);
+
+                        if (response.ok) {
+                            messageInput.value = transcribedText;
+                        } else {
+                            console.error('Transcription failed:', transcribedText);
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                    } finally {
+                        uploadAudioBtn.innerHTML = svgIcon;
+                    }
+                };
+
+                mediaRecorder.start();
+            } else {
+                uploadAudioBtn.innerHTML = svgIcon;
+                mediaRecorder.stop();
+            }
+        });
+
+        audioFileInput.addEventListener('change', async function () {
+            const audioFile = this.files[0];
+            const formData = new FormData();
+            formData.append('audio', audioFile);
+
+            try {
+                const response = await fetch('/speech-to-text', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const transcribedText = await response.text();
+
+                if (response.ok) {
+                    messageInput.value = transcribedText;
+                } else {
+                    console.error('Transcription failed:', transcribedText);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        });
+    });
+
 </script>
