@@ -2,11 +2,12 @@
 
 namespace Controllers;
 
+use GuzzleHttp\Exception\GuzzleException;
 use PDOException;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use PDO;
-
+use App\SpeechToText;
 class ChatController
 {
     private $pdo;
@@ -159,4 +160,104 @@ class ChatController
         $response->getBody()->write($html);
         return $response;
     }
+
+    private function transcribeAudio($audioStream)
+    {
+        $apiKey = '97a37704e7164bb9bbf6b1abadb120d0';
+
+        $tempAudioFilePath = tempnam(sys_get_temp_dir(), 'audio') . '.mp3';
+        file_put_contents($tempAudioFilePath, $audioStream);
+
+        $reencodedFilePath = $this->reencodeMp3($tempAudioFilePath);
+
+//        if (file_exists($tempAudioFilePath)) {
+//            echo "Temporary file path: $tempAudioFilePath\n";
+//        } else {
+//            echo "Temporary file creation failed.\n";
+//        }
+        $speechToText = new SpeechToText($apiKey);
+        $audioUrl = $speechToText->uploadAudio($reencodedFilePath);
+
+//        echo "Audio URL: " . $audioUrl . "\n";
+
+        if (!$audioUrl) {
+            echo "Failed to upload audio file to AssemblyAI.\n";
+            unlink($tempAudioFilePath);
+            return null;
+        }
+        $data = [
+            'audio_url' => $audioUrl,
+            'auto_highlights' => true,
+        ];
+        try {
+            $response = $speechToText->transcribe($audioUrl);
+            if (isset($response['id'])) {
+                $transcriptId = $response['id'];
+                $pollingEndpoint = "https://api.assemblyai.com/v2/transcript/" . $transcriptId;
+                while (true) {
+                    $pollingResponse = $speechToText->getTranscription($transcriptId);
+                    if ($pollingResponse['status'] === 'completed') {
+                        unlink($tempAudioFilePath);
+                        return $pollingResponse;
+                    } elseif ($pollingResponse['status'] === 'error') {
+                        echo "Transcription failed: " . ($pollingResponse['error'] ?? 'Unknown error') . "\n";
+                        unlink($tempAudioFilePath);
+                        return null;
+                    } else {
+//                        echo "Polling status: " . $pollingResponse['status'] . "\n";
+                        sleep(3);
+                    }
+                }
+            } else {
+                unlink($tempAudioFilePath);
+                echo "Failed to initiate transcription.\n";
+                return null;
+            }
+        } catch (GuzzleException $e) {
+            echo "Request failed: " . $e->getMessage() . "\n";
+            unlink($tempAudioFilePath);
+            return null;
+        }
+    }
+
+
+    /**
+     * @throws GuzzleException
+     */
+    public function handleSpeechToText(Request $request, Response $response): Response
+    {
+        $uploadedFiles = $request->getUploadedFiles();
+        $audioFile = $uploadedFiles['audio'] ?? null;
+
+        if ($audioFile && $audioFile->getError() === UPLOAD_ERR_OK) {
+            $audioStream = $audioFile->getStream()->getContents();
+//            echo "Audio Stream Size: " . strlen($audioStream) . "\n";
+
+            $transcriptionResult = $this->transcribeAudio($audioStream);
+
+            if ($transcriptionResult && isset($transcriptionResult['text'])) {
+                $transcriptionText = $transcriptionResult['text'];
+                $response->getBody()->write($transcriptionText);
+            } else {
+                $response->getBody()->write('Transcription failed or returned no result.');
+                return $response->withStatus(500);
+            }
+        } else {
+            $response->getBody()->write('No valid audio file uploaded.');
+            return $response->withStatus(400);
+        }
+
+        return $response->withHeader('Content-Type', 'text/plain');
+    }
+    private function reencodeMp3($filePath)
+    {
+        $ffmpeg = \FFMpeg\FFMpeg::create();
+        $audio = $ffmpeg->open($filePath);
+
+        $tempReencodedFilePath = tempnam(sys_get_temp_dir(), 'audio_reencoded') . '.mp3';
+        $audio->save(new \FFMpeg\Format\Audio\Mp3(), $tempReencodedFilePath);
+
+        return $tempReencodedFilePath;
+    }
+
 }
