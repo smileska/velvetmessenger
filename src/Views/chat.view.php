@@ -34,12 +34,10 @@ require('parts/navbar.php');
     var conn = new WebSocket('ws://localhost:8080');
 
     conn.onopen = function(e) {
-        console.log("Connection established!");
     };
 
     conn.onmessage = function(e) {
         const messageData = JSON.parse(e.data);
-        console.log("Received message:", e.data);
         if (messageData.type === 'reaction') {
             updateReactionDisplay(messageData.message_id, messageData.reaction_type);
         }
@@ -52,11 +50,9 @@ require('parts/navbar.php');
     };
 
     conn.onerror = function(error) {
-        console.log('WebSocket Error: ' + error);
     };
 
     conn.onclose = function(e) {
-        console.log('WebSocket Connection Closed. Reconnecting...');
         setTimeout(function() {
             conn = new WebSocket('ws://localhost:8080');
         }, 1000);
@@ -143,8 +139,6 @@ require('parts/navbar.php');
         return messageElement;
     }
     function createReactionContainer(messageId, isPrivateChat, initialReaction = null) {
-        console.log('Creating reaction container:', { messageId, isPrivateChat, initialReaction });
-
         const reactionContainer = document.createElement('div');
         reactionContainer.classList.add('reaction-container', 'flex', 'items-center', 'relative', 'ml-auto', 'rounded-lg');
 
@@ -194,7 +188,6 @@ require('parts/navbar.php');
         reactionContainer.appendChild(reactionButton);
         reactionContainer.appendChild(reactionPopup);
 
-        console.log('Reaction container created:', reactionContainer);
         return reactionContainer;
     }
     function positionReactionPopup(button, popup) {
@@ -230,7 +223,6 @@ require('parts/navbar.php');
     document.addEventListener('click', function(event) {
         const reactionButton = event.target.closest('.reaction-button');
         if (reactionButton) {
-            console.log('Reaction button clicked');
             event.stopPropagation();
             const reactionPopup = reactionButton.nextElementSibling;
             if (reactionPopup.classList.contains('hidden')) {
@@ -242,7 +234,6 @@ require('parts/navbar.php');
         }
         const emojiButton = event.target.closest('.reaction-popup button');
         if (emojiButton) {
-            console.log('Emoji button clicked');
             event.stopPropagation();
             const messageId = emojiButton.closest('.reaction-container').querySelector('.reaction-button').dataset.messageId;
             const reactionType = emojiButton.dataset.reactionType;
@@ -330,7 +321,6 @@ require('parts/navbar.php');
             reactionPopup.classList.add('hidden');
         });
         reactionButton.onclick = function(event) {
-            console.log('Reaction button clicked');
             event.stopPropagation();
             reactionPopup.classList.toggle('hidden');
         };
@@ -357,13 +347,10 @@ require('parts/navbar.php');
         });
     });
     function sendReaction(messageId, reactionType, isPrivateChat) {
-        console.log('Sending reaction:', { messageId, reactionType, isPrivateChat });
         if (!messageId) {
-            console.error('Invalid message ID');
             return;
         }
         const url = isPrivateChat ? `/message/${messageId}/react` : `/chatroom-message/${messageId}/react`;
-        console.log('Sending reaction:', { messageId, reactionType, isPrivateChat, url });
         fetch(url, {
             method: 'POST',
             headers: {
@@ -374,7 +361,6 @@ require('parts/navbar.php');
         })
             .then(response => response.json())
             .then(data => {
-                console.log('Reaction response:', data);
                 if (data.success) {
                     updateReactionDisplay(messageId, reactionType);
                     conn.send(JSON.stringify({
@@ -382,8 +368,6 @@ require('parts/navbar.php');
                         message_id: messageId,
                         reaction_type: reactionType
                     }));
-                } else {
-                    console.error('Failed to send reaction:', data.error);
                 }
             })
             .catch(error => console.error('Error:', error));
@@ -397,14 +381,12 @@ require('parts/navbar.php');
     }
 
     function updateReactionDisplay(messageId, reactionType) {
-        console.log('Updating reaction display:', { messageId, reactionType });
         const svgIcon = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M15.5 11C16.3284 11 17 10.3284 17 9.5C17 8.67157 16.3284 8 15.5 8C14.6716 8 14 8.67157 14 9.5C14 10.3284 14.6716 11 15.5 11Z" fill="currentColor" />
         <path d="M8.5 11C9.32843 11 10 10.3284 10 9.5C10 8.67157 9.32843 8 8.5 8C7.67157 8 7 8.67157 7 9.5C7 10.3284 7.67157 11 8.5 11Z" fill="currentColor" />
         <path d="M12 13.5C13.1046 13.5 14 14.3954 14 15.5C14 16.6046 13.1046 17.5 12 17.5C10.8954 17.5 10 16.6046 10 15.5C10 14.3954 10.8954 13.5 12 13.5Z" fill="currentColor" />
         <path fill-rule="evenodd" clip-rule="evenodd" d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22ZM12 20C16.4183 20 20 16.4183 20 12C20 7.58172 16.4183 4 12 4C7.58172 4 4 7.58172 4 12C4 16.4183 7.58172 20 12 20Z" fill="currentColor" />
     </svg>`;
-        console.log('Updating reaction display:', { messageId, reactionType });
         const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
         if (messageElement) {
             const reactionButton = messageElement.querySelector('.reaction-button');
@@ -422,7 +404,6 @@ require('parts/navbar.php');
         }
     }
     document.addEventListener('DOMContentLoaded', function() {
-        console.log('DOM fully loaded, initializing reaction containers');
         const messages = document.querySelectorAll('[data-message-id]');
         messages.forEach(message => {
             const messageId = message.dataset.messageId;
@@ -471,8 +452,6 @@ require('parts/navbar.php');
 
                 mediaRecorder.onstop = async () => {
                     const audioBlob = new Blob(audioChunks, { type: 'audio/mpeg' });
-                    console.log('Audio Blob:', audioBlob);
-
                     const formData = new FormData();
                     formData.append('audio', audioBlob, 'speech.mp3');
 
@@ -481,14 +460,9 @@ require('parts/navbar.php');
                             method: 'POST',
                             body: formData
                         });
-
                         const transcribedText = await response.text();
-                        console.log('Transcription Response:', transcribedText);
-
                         if (response.ok) {
                             messageInput.value = transcribedText;
-                        } else {
-                            console.error('Transcription failed:', transcribedText);
                         }
                     } catch (error) {
                         console.error('Error:', error);
@@ -519,8 +493,6 @@ require('parts/navbar.php');
 
                 if (response.ok) {
                     messageInput.value = transcribedText;
-                } else {
-                    console.error('Transcription failed:', transcribedText);
                 }
             } catch (error) {
                 console.error('Error:', error);
