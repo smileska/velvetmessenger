@@ -41,7 +41,7 @@ require('parts/navbar.php');
         if (messageData.type === 'reaction') {
             updateReactionDisplay(messageData.message_id, messageData.reaction_type);
         }
-        else {
+        else if (!messageData.type && (messageData.sender === '<?= htmlspecialchars($_SESSION['username']); ?>' || messageData.recipient === '<?= htmlspecialchars($_SESSION['username']); ?>')) {
             const chatBox = document.getElementById('chat-box');
             const messageElement = createMessageElement(messageData);
             chatBox.appendChild(messageElement);
@@ -440,17 +440,21 @@ require('parts/navbar.php');
         let mediaRecorder;
         let audioChunks = [];
         const svgIcon = uploadAudioBtn.querySelector('svg').outerHTML;
+
         uploadAudioBtn.addEventListener('click', async () => {
             if (uploadAudioBtn.textContent.trim() === '') {
                 uploadAudioBtn.textContent = '⏹️';
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 mediaRecorder = new MediaRecorder(stream);
 
+                audioChunks = [];
+
                 mediaRecorder.ondataavailable = event => {
                     audioChunks.push(event.data);
                 };
 
                 mediaRecorder.onstop = async () => {
+                    messageInput.value = '';
                     const audioBlob = new Blob(audioChunks, { type: 'audio/mpeg' });
                     const formData = new FormData();
                     formData.append('audio', audioBlob, 'speech.mp3');
@@ -479,6 +483,7 @@ require('parts/navbar.php');
         });
 
         audioFileInput.addEventListener('change', async function () {
+            messageInput.value = '';
             const audioFile = this.files[0];
             const formData = new FormData();
             formData.append('audio', audioFile);
