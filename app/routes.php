@@ -16,7 +16,6 @@ use Controllers\ChatroomController;
 use Controllers\ProfileController;
 
 require __DIR__ . '/../src/Validator/validator.php';
-//global $pdo;
 
 return function (App $app) {
     $container = $app->getContainer();
