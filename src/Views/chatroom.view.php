@@ -597,6 +597,12 @@ $currentUserId = $_SESSION['user_id'];
             event.stopPropagation();
             if (reactionPopup.classList.contains('hidden')) {
                 reactionPopup.classList.remove('hidden');
+                const messageElement = this.closest('[data-message-id]');
+                if (messageElement.classList.contains('bg-blue-100')) {
+                    reactionPopup.classList.add('bg-blue-100');
+                } else if (messageElement.classList.contains('bg-gray-100')) {
+                    reactionPopup.classList.add('bg-gray-100');
+                }
                 positionReactionPopup(reactionButton, reactionPopup);
             } else {
                 reactionPopup.classList.add('hidden');
@@ -626,20 +632,21 @@ $currentUserId = $_SESSION['user_id'];
         let audioChunks = [];
         const svgIcon = uploadAudioBtn.querySelector('svg').outerHTML;
 
-
         uploadAudioBtn.addEventListener('click', async () => {
             if (uploadAudioBtn.textContent.trim() === '') {
                 uploadAudioBtn.textContent = '⏹️';
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 mediaRecorder = new MediaRecorder(stream);
 
+                audioChunks = [];
+
                 mediaRecorder.ondataavailable = event => {
                     audioChunks.push(event.data);
                 };
 
                 mediaRecorder.onstop = async () => {
+                    messageInput.value = '';
                     const audioBlob = new Blob(audioChunks, { type: 'audio/mpeg' });
-
                     const formData = new FormData();
                     formData.append('audio', audioBlob, 'speech.mp3');
 
@@ -650,7 +657,6 @@ $currentUserId = $_SESSION['user_id'];
                         });
 
                         const transcribedText = await response.text();
-
                         if (response.ok) {
                             messageInput.value = transcribedText;
                         }
@@ -669,6 +675,7 @@ $currentUserId = $_SESSION['user_id'];
         });
 
         audioFileInput.addEventListener('change', async function () {
+            messageInput.value = '';
             const audioFile = this.files[0];
             const formData = new FormData();
             formData.append('audio', audioFile);
