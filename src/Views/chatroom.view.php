@@ -29,13 +29,6 @@ $currentUserId = $_SESSION['user_id'];
         </form>
 
         <input type="file" id="audio-file-input" accept="audio/*" style="display:none;">
-<!--        <button id="upload-audio-btn" class="btn-primary ml-3 mt-3 mb-3 px-4 py-1 text-white rounded-lg shadow hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:ring-opacity-50">-->
-<!--            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">-->
-<!--                <path stroke-linecap="round" stroke-linejoin="round" d="M12 1.5a3.75 3.75 0 00-3.75 3.75v7.5a3.75 3.75 0 007.5 0v-7.5A3.75 3.75 0 0012 1.5zM7.5 10.5v2.25a4.5 4.5 0 009 0V10.5m-9 0h9M12 18.75v1.5M8.25 21h7.5" />-->
-<!--            </svg>-->
-<!--        </button>-->
-<!---->
-<!--        <input type="file" id="audio-file-input" accept="audio/*" style="display:none;">-->
         <div id="manage-users-section" style="display: none;">
             <h3 class="text-xl font-bold mb-2">Manage Users</h3>
             <form id="add-user-form" class="mb-2 flex">
@@ -670,14 +663,6 @@ $currentUserId = $_SESSION['user_id'];
                 mediaRecorder.onstop = async () => {
                     const audioBlob = new Blob(audioChunks, { type: 'audio/mpeg' });
                     console.log('Audio Blob:', audioBlob);
-
-                    // const audioUrl = URL.createObjectURL(audioBlob);
-                    // const a = document.createElement('a');
-                    // a.href = audioUrl;
-                    // a.download = 'recorded_audio.mp3';
-                    // document.body.appendChild(a);
-                    // a.click();
-                    // URL.revokeObjectURL(audioUrl);
 
                     const formData = new FormData();
                     formData.append('audio', audioBlob, 'speech.mp3');

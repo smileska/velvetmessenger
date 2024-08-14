@@ -473,14 +473,6 @@ require('parts/navbar.php');
                     const audioBlob = new Blob(audioChunks, { type: 'audio/mpeg' });
                     console.log('Audio Blob:', audioBlob);
 
-                    // const audioUrl = URL.createObjectURL(audioBlob);
-                    // const a = document.createElement('a');
-                    // a.href = audioUrl;
-                    // a.download = 'recorded_audio.mp3';
-                    // document.body.appendChild(a);
-                    // a.click();
-                    // URL.revokeObjectURL(audioUrl);
-
                     const formData = new FormData();
                     formData.append('audio', audioBlob, 'speech.mp3');
 
