@@ -170,15 +170,8 @@ class ChatController
 
         $reencodedFilePath = $this->reencodeMp3($tempAudioFilePath);
 
-//        if (file_exists($tempAudioFilePath)) {
-//            echo "Temporary file path: $tempAudioFilePath\n";
-//        } else {
-//            echo "Temporary file creation failed.\n";
-//        }
         $speechToText = new SpeechToText($apiKey);
         $audioUrl = $speechToText->uploadAudio($reencodedFilePath);
-
-//        echo "Audio URL: " . $audioUrl . "\n";
 
         if (!$audioUrl) {
             echo "Failed to upload audio file to AssemblyAI.\n";
@@ -204,7 +197,6 @@ class ChatController
                         unlink($tempAudioFilePath);
                         return null;
                     } else {
-//                        echo "Polling status: " . $pollingResponse['status'] . "\n";
                         sleep(3);
                     }
                 }
@@ -231,7 +223,6 @@ class ChatController
 
         if ($audioFile && $audioFile->getError() === UPLOAD_ERR_OK) {
             $audioStream = $audioFile->getStream()->getContents();
-//            echo "Audio Stream Size: " . strlen($audioStream) . "\n";
 
             $transcriptionResult = $this->transcribeAudio($audioStream);
 
