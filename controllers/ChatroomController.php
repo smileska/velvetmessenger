@@ -3,20 +3,24 @@
 namespace Controllers;
 
 use Exception;
+use PDOException;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use PDO;
 use App\Chatroom;
+use Repositories\Repository;
 
 class ChatroomController
 {
     private $pdo;
     private $chatroom;
+    private $repository;
 
     public function __construct(PDO $pdo, Chatroom $chatroom)
     {
         $this->pdo = $pdo;
         $this->chatroom = $chatroom;
+        $this->repository = new Repository($pdo);
     }
 
     public function createChatroom(Request $request, Response $response): Response
@@ -110,7 +114,7 @@ class ChatroomController
         }
 
         try {
-            if (!$chatroom->isAdmin($chatroomId, $currentUserId)) {
+            if (!$this->chatroom->isAdmin($chatroomId, $currentUserId)) {
                 throw new \Exception("Only admins can add users to the chatroom");
             }
 
@@ -118,15 +122,14 @@ class ChatroomController
                 throw new \Exception("Username is missing from request");
             }
 
-            $stmt = $pdo->prepare('SELECT id FROM users WHERE username = :username');
-            $stmt->execute(['username' => $username]);
-            $userId = $stmt->fetchColumn();
+            $user = $this->repository->fetch('users', ['id'], 'username = :username', ['username' => $username]);
 
-            if (!$userId) {
+            if (empty($user)) {
                 throw new \Exception("User not found: $username");
             }
 
-            $result = $chatroom->addUser($chatroomId, $userId);
+            $userId = $user[0]['id'];
+            $result = $this->chatroom->addUser($chatroomId, $userId);
 
             if (!$result) {
                 throw new \Exception("Failed to add user: $username to chatroom: $chatroomId");
@@ -202,14 +205,12 @@ class ChatroomController
         $pdo = $this->pdo;
         $chatroomId = (int)$args['id'];
 
-        $stmt = $pdo->prepare('
-        SELECT u.id, u.username 
-        FROM suggested_users su 
-        JOIN users u ON su.suggested_user_id = u.id 
-        WHERE su.chatroom_id = :chatroom_id
-    ');
-        $stmt->execute(['chatroom_id' => $chatroomId]);
-        $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $users = $this->repository->fetch(
+            'suggested_users su JOIN users u ON su.suggested_user_id = u.id',
+            ['u.id', 'u.username'],
+            'su.chatroom_id = :chatroom_id',
+            ['chatroom_id' => $chatroomId]
+        );
 
         $response->getBody()->write(json_encode($users));
         return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
@@ -238,6 +239,13 @@ class ChatroomController
                 throw new Exception("User ID is missing from request");
             }
 
+            $stmt = $pdo->prepare('SELECT COUNT(*) FROM chatroom_users WHERE chatroom_id = :chatroom_id AND user_id = :user_id');
+            $stmt->execute(['chatroom_id' => $chatroomId, 'user_id' => $userId]);
+            $isUserInChatroom = $stmt->fetchColumn() > 0;
+
+            if ($isUserInChatroom) {
+                throw new Exception("User is already a member of the chatroom");
+            }
             $stmt = $pdo->prepare('INSERT INTO chatroom_users (chatroom_id, user_id, is_admin) VALUES (:chatroom_id, :user_id, FALSE)');
             $stmt->execute(['chatroom_id' => $chatroomId, 'user_id' => $userId]);
 
@@ -295,28 +303,32 @@ class ChatroomController
         $pdo = $this->pdo;
         $chatroomId = $args['id'];
 
-        $stmt = $pdo->prepare('
-    SELECT u.username, cu.is_admin 
-    FROM chatroom_users cu 
-    JOIN users u ON cu.user_id = u.id 
-    WHERE cu.chatroom_id = :chatroom_id
-    ');
-        $stmt->execute(['chatroom_id' => $chatroomId]);
-        $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $users = $this->repository->fetch(
+            'chatroom_users cu JOIN users u ON cu.user_id = u.id',
+            ['u.username', 'cu.is_admin'],
+            'cu.chatroom_id = :chatroom_id',
+            ['chatroom_id' => $chatroomId]
+        );
 
         $response->getBody()->write(json_encode($users));
         return $response->withHeader('Content-Type', 'application/json');
     }
-    public function removeUser(Request $request, Response $response, array $args): Response{
-        $chatroom = $this->chatroom;
+    public function removeUser(Request $request, Response $response, array $args): Response
+    {
         $pdo = $this->pdo;
+        $chatroom = $this->chatroom;
         $chatroomId = $args['id'];
         $data = $request->getParsedBody();
         $username = $data['username'] ?? null;
-        $currentUserId = $_SESSION['user_id'];
+        $currentUserId = $_SESSION['user_id'] ?? null;
+
+        if (!$currentUserId) {
+            $response->getBody()->write(json_encode(['message' => 'User not authenticated']));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(401);
+        }
 
         try {
-            if (!$chatroom->isAdmin($chatroomId, $currentUserId)) {
+            if (!$this->chatroom->isAdmin($chatroomId, $currentUserId)) {
                 throw new Exception("Only admins can remove users from the chatroom");
             }
 
@@ -324,19 +336,19 @@ class ChatroomController
                 throw new Exception("Username is missing from request");
             }
 
-            $stmt = $pdo->prepare('SELECT id FROM users WHERE username = :username');
-            $stmt->execute(['username' => $username]);
-            $userId = $stmt->fetchColumn();
+            $user = $this->repository->fetch(
+                'users',
+                ['id'],
+                'username = :username',
+                ['username' => $username]
+            );
 
-            if (!$userId) {
+            if (empty($user)) {
                 throw new Exception("User not found: $username");
             }
 
-            $result = $chatroom->removeUser($chatroomId, $userId);
-
-            if (!$result) {
-                throw new Exception("Failed to remove user: $username from chatroom: $chatroomId");
-            }
+            $userId = $user[0]['id'];
+            $this->chatroom->removeUser($chatroomId, $userId);
 
             $response->getBody()->write(json_encode(['message' => 'User removed successfully']));
             return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
