@@ -41,19 +41,15 @@ return function (App $app) {
         $userController = $container->get(UserController::class);
         return $userController->register($request, $response);
     });
-
     $app->post('/login', function (Request $request, Response $response) use ($container) {
         return $container->get(AuthController::class)->login($request, $response);
     });
-
     $app->get('/logout', function (Request $request, Response $response) use ($container) {
         return $container->get(AuthController::class)->logout($request, $response);
     });
-
     $app->post('/verify-email', function (Request $request, Response $response) use ($container) {
         return $container->get(AuthController::class)->verifyEmail($request, $response);
     });
-
     $app->get('/login', function (Request $request, Response $response) use ($container) {
         return $container->get(AuthController::class)->showLogin($request, $response);
     });
@@ -172,16 +168,7 @@ return function (App $app) {
     $app->post('/chatroom-message/{id}/react', function (Request $request, Response $response, $args) use ($container) {
         return $container->get(ChatroomController::class)->reactToChatroomMessage($request, $response, $args);
     });
-
-    function updateUserStatus($pdo, $username, $status)
-    {
-        $stmt = $pdo->prepare('UPDATE users SET status = :status WHERE username = :username');
-        $stmt->execute(['status' => $status, 'username' => $username]);
-    }
-
     $app->post('/speech-to-text', function (Request $request, Response $response) use ($container) {
         return $container->get(ChatController::class)->handleSpeechToText($request, $response);
     });
-
-
 };
