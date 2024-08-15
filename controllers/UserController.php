@@ -2,21 +2,25 @@
 
 namespace Controllers;
 
+use PDO;
 use PDOException;
+use PHPMailer\PHPMailer\Exception;
+use PHPMailer\PHPMailer\PHPMailer;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Psr\Http\Message\UploadedFileInterface;
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\Exception;
-use PDO;
+use Repositories\Repository;
+require_once __DIR__ . '/../Repositories/Repository.php';
 
 class UserController
 {
     private $pdo;
+    private $repository;
 
     public function __construct(PDO $pdo)
     {
         $this->pdo = $pdo;
+        $this->repository = new Repository($pdo);
     }
 
     public function register(Request $request, Response $response): Response
@@ -129,9 +133,12 @@ class UserController
             return $response->withStatus(400);
         }
 
-        $stmt = $pdo->prepare('SELECT username, image FROM users WHERE username LIKE :searchQuery');
-        $stmt->execute(['searchQuery' => '%' . $searchQuery . '%']);
-        $users = $stmt->fetchAll();
+        $users = $this->repository->fetch(
+            'users',
+            ['username', 'image'],
+            'username LIKE :searchQuery',
+            ['searchQuery' => '%' . $searchQuery . '%']
+        );
 
         $html = view('index.view.php', ['users' => $users, 'searchQuery' => $searchQuery]);
         $response->getBody()->write($html);
@@ -142,9 +149,12 @@ class UserController
 
         $profileUsername = $args['username'];
 
-        $stmt = $pdo->prepare('SELECT * FROM users WHERE username = :username');
-        $stmt->execute(['username' => $profileUsername]);
-        $profileUser = $stmt->fetch();
+        $profileUser = $this->repository->fetch(
+            'users',
+            ['*'],
+            'username = :username',
+            ['username' => $profileUsername]
+        )[0] ?? null;
 
         if ($profileUser) {
             $html = view('user-profile.view.php', ['profileUser' => $profileUser]);

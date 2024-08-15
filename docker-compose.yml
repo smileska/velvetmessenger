@@ -17,6 +17,7 @@
                 - ./uploads:/var/www/uploads
                 - ./sessions:/var/www/sessions
                 - ./controllers:/var/www/controllers
+                - ./Repositories:/var/www/Repositories
             depends_on:
                 - db
                 - mailhog
