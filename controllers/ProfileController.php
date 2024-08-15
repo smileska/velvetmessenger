@@ -2,17 +2,21 @@
 
 namespace Controllers;
 
+use PDOException;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use PDO;
+use Repositories\Repository;
 
 class ProfileController
 {
     private $pdo;
+    private $repository;
 
     public function __construct(PDO $pdo)
     {
         $this->pdo = $pdo;
+        $this->repository = new Repository($pdo);
     }
 
     public function updateUsername(Request $request, Response $response): Response
@@ -27,9 +31,7 @@ class ProfileController
 
         $userId = $_SESSION['user_id'];
 
-        $stmt = $this->pdo->prepare('SELECT password FROM users WHERE id = :id');
-        $stmt->execute(['id' => $userId]);
-        $user = $stmt->fetch();
+        $user = $this->repository->fetch('users', ['password'], 'id = :id', ['id' => $userId])[0] ?? null;
 
         if (!$user || !password_verify($password, $user['password'])) {
             $html = view('profile.view.php', ['error' => 'Incorrect password']);
@@ -58,9 +60,7 @@ class ProfileController
 
         $userId = $_SESSION['user_id'];
 
-        $stmt = $this->pdo->prepare('SELECT password FROM users WHERE id = :id');
-        $stmt->execute(['id' => $userId]);
-        $user = $stmt->fetch();
+        $user = $this->repository->fetch('users', ['password'], 'id = :id', ['id' => $userId])[0] ?? null;
 
         if (!$user || !password_verify($currentPassword, $user['password'])) {
             $html = view('profile.view.php', ['error' => 'Incorrect current password']);
@@ -128,10 +128,8 @@ class ProfileController
         }
 
         $username = $_SESSION['username'];
-        $stmt = $pdo->prepare('SELECT * FROM users WHERE username = :username');
-        $stmt->execute(['username' => $username]);
-        $user = $stmt->fetch();
 
+        $user = $this->repository->fetch('users', ['*'], 'username = :username', ['username' => $username])[0] ?? null;
         if ($user) {
             $html = view('profile.view.php', ['user' => $user]);
             $response->getBody()->write($html);
