@@ -63,7 +63,8 @@
     "autoload": {
         "psr-4": {
             "Controllers\\": "controllers/",
-            "App\\": "src/"
+            "App\\": "src/",
+            "Repositories\\": "Repositories/"
         }
     },
     "autoload-dev": {
