@@ -6,7 +6,7 @@
                 context: ./
                 dockerfile: Dockerfile
             container_name: velvetmessenger-app
-            restart: always
+            restart: unless-stopped
             working_dir: /var/www/
             volumes:
                 - ./app:/var/www/app
@@ -26,7 +26,7 @@
         db:
             image: postgres:latest
             container_name: velvetmessenger-db
-            restart: always
+            restart: unless-stopped
             environment:
                 POSTGRES_USER: example
                 POSTGRES_PASSWORD: example
@@ -40,7 +40,7 @@
         nginx:
             image: nginx:1.19-alpine
             container_name: velvetmessenger-nginx
-            restart: always
+            restart: unless-stopped
             ports:
                 - '8000:80'
             volumes:
@@ -54,7 +54,7 @@
         mailhog:
             image: mailhog/mailhog
             container_name: velvetmessenger-mailhog
-            restart: always
+            restart: unless-stopped
             ports:
                 - '8025:8025'
                 - '1025:1025'
@@ -63,7 +63,7 @@
                 context: ./
                 dockerfile: Dockerfile
             container_name: velvetmessenger-chat
-            restart: always
+            restart: unless-stopped
             working_dir: /var/www/
             volumes:
                 - ./:/var/www/
