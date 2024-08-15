@@ -8,13 +8,17 @@ use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use PDO;
 use App\SpeechToText;
+use Repositories\Repository;
+
 class ChatController
 {
     private $pdo;
+    private $repository;
 
     public function __construct(PDO $pdo)
     {
         $this->pdo = $pdo;
+        $this->repository = new Repository($pdo);
     }
 
     public function sendMessage(Request $request, Response $response): Response
@@ -57,19 +61,16 @@ class ChatController
         $sender = $_SESSION['username'];
         $recipient = $args['recipient'];
 
-        $stmt = $pdo->prepare('
-        SELECT m.*, mr.reaction_type 
-        FROM messages m
-        LEFT JOIN message_reactions mr ON m.id = mr.message_id AND mr.user_id = :user_id
-        WHERE (m.sender = :sender AND m.recipient = :recipient) OR (m.sender = :recipient AND m.recipient = :sender) 
-        ORDER BY m.timestamp ASC
-    ');
-        $stmt->execute([
-            'sender' => $sender,
-            'recipient' => $recipient,
-            'user_id' => $_SESSION['user_id']
-        ]);
-        $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $messages = $this->repository->fetch(
+            'messages m LEFT JOIN message_reactions mr ON m.id = mr.message_id AND mr.user_id = :user_id',
+            ['m.*', 'mr.reaction_type'],
+            '(m.sender = :sender AND m.recipient = :recipient) OR (m.sender = :recipient AND m.recipient = :sender)',
+            [
+                'sender' => $sender,
+                'recipient' => $recipient,
+                'user_id' => $_SESSION['user_id']
+            ]
+        );
 
         $response->getBody()->write(json_encode($messages));
         return $response->withHeader('Content-Type', 'application/json');
@@ -123,9 +124,15 @@ class ChatController
         $sender = $request->getQueryParams()['sender'] ?? '';
         $recipient = $request->getQueryParams()['recipient'] ?? '';
 
-        $stmt = $pdo->prepare('SELECT * FROM messages WHERE (sender = :sender AND recipient = :recipient) OR (sender = :recipient AND recipient = :sender) ORDER BY timestamp ASC');
-        $stmt->execute(['sender' => $sender, 'recipient' => $recipient]);
-        $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $messages = $this->repository->fetch(
+            'messages',
+            ['*'],
+            '(sender = :sender AND recipient = :recipient) OR (sender = :recipient AND recipient = :sender)',
+            [
+                'sender' => $sender,
+                'recipient' => $recipient
+            ]
+        );
 
         $payload = json_encode($messages);
 
@@ -147,9 +154,12 @@ class ChatController
             return $response->withHeader('Location', '/')->withStatus(400);
         }
 
-        $stmt = $pdo->prepare('SELECT * FROM users WHERE username = :username');
-        $stmt->execute(['username' => $chatUser]);
-        $user = $stmt->fetch();
+        $user = $this->repository->fetch(
+            'users',
+            ['*'],
+            'username = :username',
+            ['username' => $chatUser]
+        )[0] ?? null;
 
         if (!$user) {
             $response->getBody()->write('User not found');
