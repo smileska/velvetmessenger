@@ -6,14 +6,17 @@ use PDOException;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use PDO;
+use Repositories\Repository;
 
 class AuthController
 {
     private $pdo;
+    private $repository;
 
     public function __construct(PDO $pdo)
     {
         $this->pdo = $pdo;
+        $this->repository = new Repository($pdo);
     }
 
     public function login(Request $request, Response $response): Response
@@ -29,9 +32,7 @@ class AuthController
             return $response->withStatus(400);
         }
 
-        $stmt = $this->pdo->prepare('SELECT * FROM users WHERE username = :username');
-        $stmt->execute(['username' => $username]);
-        $user = $stmt->fetch();
+        $user = $this->repository->fetch('users', ['*'], 'username = :username', ['username' => $username])[0] ?? null;
 
         if ($user && password_verify($password, $user['password'])) {
             $_SESSION['user_id'] = $user['id'];
@@ -82,9 +83,7 @@ class AuthController
         try {
             $this->pdo->beginTransaction();
 
-            $stmt = $this->pdo->prepare('SELECT * FROM unverified_users WHERE email = :email AND verification_code = :verification_code');
-            $stmt->execute(['email' => $email, 'verification_code' => $verificationCode]);
-            $user = $stmt->fetch();
+            $user = $this->repository->fetch('unverified_users', ['*'], 'email = :email AND verification_code = :verification_code', ['email' => $email, 'verification_code' => $verificationCode])[0] ?? null;
 
             if ($user) {
                 $stmt = $this->pdo->prepare('INSERT INTO users (username, password, email, image, status) VALUES (:username, :password, :email, :image, :status)');
