@@ -148,12 +148,12 @@ class ChatController
             return $response->withHeader('Location', '/')->withStatus(400);
         }
 
-        $user = $this->repository->fetch(
+        $user = $this->repository->fetchOne(
             'users',
             ['*'],
             'username = :username',
             ['username' => $chatUser]
-        )[0] ?? null;
+        ) ?? null;
 
         if (!$user) {
             $response->getBody()->write('User not found');
