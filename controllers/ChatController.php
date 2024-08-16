@@ -24,9 +24,6 @@ class ChatController
     public function sendMessage(Request $request, Response $response): Response
     {
         $pdo = $this->pdo;
-        if (!isset($_SESSION['username'])) {
-            return $response->withHeader('Location', '/login')->withStatus(302);
-        }
 
         $parsedBody = $request->getParsedBody();
         $sender = $_SESSION['username'];
@@ -143,9 +140,6 @@ class ChatController
     }
     public function showChat(Request $request, Response $response, array $args): Response {
         $pdo = $this->pdo;
-        if (!isset($_SESSION['username'])) {
-            return $response->withHeader('Location', '/login')->withStatus(302);
-        }
 
         $currentUser = $_SESSION['username'];
         $chatUser = $args['username'];

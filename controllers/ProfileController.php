@@ -82,9 +82,6 @@ class ProfileController
     }
     public function updateProfilePicture(Request $request, Response $response): Response {
         $pdo = $this->pdo;
-        if (!isset($_SESSION['username'])) {
-            return $response->withHeader('Location', '/login')->withStatus(302);
-        }
 
         $username = $_SESSION['username'];
         $uploadedFiles = $request->getUploadedFiles();
@@ -122,11 +119,6 @@ class ProfileController
     }
     public function showProfile(Request $request, Response $response): Response {
         $pdo = $this->pdo;
-
-        if (!isset($_SESSION['username'])) {
-            return $response->withHeader('Location', '/login')->withStatus(302);
-        }
-
         $username = $_SESSION['username'];
 
         $user = $this->repository->fetch('users', ['*'], 'username = :username', ['username' => $username])[0] ?? null;

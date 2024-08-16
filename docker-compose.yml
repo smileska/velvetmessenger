@@ -18,6 +18,7 @@
                 - ./sessions:/var/www/sessions
                 - ./controllers:/var/www/controllers
                 - ./Repositories:/var/www/Repositories
+                - ./Middleware:/var/www/Middleware
             depends_on:
                 - db
                 - mailhog
