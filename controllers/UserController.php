@@ -154,7 +154,7 @@ class UserController
             ['*'],
             'username = :username',
             ['username' => $profileUsername]
-        ) ?? null;
+        );
 
         if ($profileUser) {
             $html = view('user-profile.view.php', ['profileUser' => $profileUser]);
