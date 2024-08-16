@@ -31,7 +31,7 @@ class ProfileController
 
         $userId = $_SESSION['user_id'];
 
-        $user = $this->repository->fetch('users', ['password'], 'id = :id', ['id' => $userId])[0] ?? null;
+        $user = $this->repository->fetchOne('users', ['password'], 'id = :id', ['id' => $userId]) ?? null;
 
         if (!$user || !password_verify($password, $user['password'])) {
             $html = view('profile.view.php', ['error' => 'Incorrect password']);
@@ -60,7 +60,7 @@ class ProfileController
 
         $userId = $_SESSION['user_id'];
 
-        $user = $this->repository->fetch('users', ['password'], 'id = :id', ['id' => $userId])[0] ?? null;
+        $user = $this->repository->fetchOne('users', ['password'], 'id = :id', ['id' => $userId]) ?? null;
 
         if (!$user || !password_verify($currentPassword, $user['password'])) {
             $html = view('profile.view.php', ['error' => 'Incorrect current password']);
@@ -121,7 +121,7 @@ class ProfileController
         $pdo = $this->pdo;
         $username = $_SESSION['username'];
 
-        $user = $this->repository->fetch('users', ['*'], 'username = :username', ['username' => $username])[0] ?? null;
+        $user = $this->repository->fetchOne('users', ['*'], 'username = :username', ['username' => $username]) ?? null;
         if ($user) {
             $html = view('profile.view.php', ['user' => $user]);
             $response->getBody()->write($html);
