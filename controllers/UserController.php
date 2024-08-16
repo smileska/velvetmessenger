@@ -149,12 +149,12 @@ class UserController
 
         $profileUsername = $args['username'];
 
-        $profileUser = $this->repository->fetch(
+        $profileUser = $this->repository->fetchOne(
             'users',
             ['*'],
             'username = :username',
             ['username' => $profileUsername]
-        )[0] ?? null;
+        ) ?? null;
 
         if ($profileUser) {
             $html = view('user-profile.view.php', ['profileUser' => $profileUser]);

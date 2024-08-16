@@ -32,7 +32,7 @@ class AuthController
             return $response->withStatus(400);
         }
 
-        $user = $this->repository->fetch('users', ['*'], 'username = :username', ['username' => $username])[0] ?? null;
+        $user = $this->repository->fetchOne('users', ['*'], 'username = :username', ['username' => $username]) ?? null;
 
         if ($user && password_verify($password, $user['password'])) {
             $_SESSION['user_id'] = $user['id'];
@@ -83,7 +83,7 @@ class AuthController
         try {
             $this->pdo->beginTransaction();
 
-            $user = $this->repository->fetch('unverified_users', ['*'], 'email = :email AND verification_code = :verification_code', ['email' => $email, 'verification_code' => $verificationCode])[0] ?? null;
+            $user = $this->repository->fetchOne('unverified_users', ['*'], 'email = :email AND verification_code = :verification_code', ['email' => $email, 'verification_code' => $verificationCode]) ?? null;
 
             if ($user) {
                 $stmt = $this->pdo->prepare('INSERT INTO users (username, password, email, image, status) VALUES (:username, :password, :email, :image, :status)');
