@@ -4,20 +4,19 @@ use Controllers\PageController;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Psr\Http\Message\UploadedFileInterface;
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\Exception;
-use App\Chatroom;
 use Slim\App;
-use DI\Container;
 use Controllers\UserController;
 use Controllers\AuthController;
 use Controllers\ChatController;
 use Controllers\ChatroomController;
 use Controllers\ProfileController;
+use Middleware\SessionMiddleware;
 
 require __DIR__ . '/../src/Validator/validator.php';
 
 return function (App $app) {
+    $app->add(new SessionMiddleware());
+
     $container = $app->getContainer();
 
     $app->get('/', function (Request $request, Response $response) use ($container) {
