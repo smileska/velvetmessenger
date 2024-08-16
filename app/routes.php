@@ -16,7 +16,7 @@ require __DIR__ . '/../src/Validator/validator.php';
 
 return function (App $app) {
     $container = $app->getContainer();
-
+    $sessionMiddleware = new SessionMiddleware();
     $app->get('/', function (Request $request, Response $response) use ($container) {
         return $container->get(PageController::class)->home($request, $response);
     });
@@ -113,7 +113,7 @@ return function (App $app) {
         $group->get('/chatroom/{id}/is-admin', ChatroomController::class . ':isAdmin');
         $group->post('/chatroom-message/{id}/react', ChatroomController::class . ':reactToChatroomMessage');
         $group->get('/chatroom/{id}/user-role', ChatroomController::class . ':getUserRole');
-    })->add(new SessionMiddleware());
+    })->add($sessionMiddleware);
 
     $app->get('/{username}', function (Request $request, Response $response, $args) use ($container) {
         return $container->get(UserController::class)->showUserProfile($request, $response, $args);

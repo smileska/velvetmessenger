@@ -9,14 +9,24 @@ use Slim\Psr7\Response as SlimResponse;
 
 class SessionMiddleware
 {
+    private array $publicRoutes;
+
+    public function __construct(array $publicRoutes = [])
+    {
+        $this->publicRoutes = $publicRoutes;
+    }
+
     public function __invoke(Request $request, RequestHandler $handler): Response
     {
         $path = $request->getUri()->getPath();
-        $publicRoutes = ['/', '/login', '/logout', '/verify-email'];
-        if (in_array($path, $publicRoutes) || isset($_SESSION['username'])) {
-            return $handler->handle($request);
+
+        if (empty($this->publicRoutes) || !in_array($path, $this->publicRoutes)) {
+            if (!isset($_SESSION['username'])) {
+                $response = new SlimResponse();
+                return $response->withHeader('Location', '/')->withStatus(302);
+            }
         }
-        $response = new SlimResponse();
-        return $response->withHeader('Location', '/')->withStatus(302);
+
+        return $handler->handle($request);
     }
 }
