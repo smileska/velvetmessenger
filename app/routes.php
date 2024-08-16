@@ -15,30 +15,19 @@ use Middleware\SessionMiddleware;
 require __DIR__ . '/../src/Validator/validator.php';
 
 return function (App $app) {
-    $app->add(new SessionMiddleware());
-
     $container = $app->getContainer();
 
     $app->get('/', function (Request $request, Response $response) use ($container) {
         return $container->get(PageController::class)->home($request, $response);
     });
-
     $app->get('/notes', function (Request $request, Response $response) use ($container) {
         return $container->get(PageController::class)->notes($request, $response);
     });
-
     $app->get('/register', function (Request $request, Response $response) use ($container) {
         return $container->get(UserController::class)->showRegister($request, $response);
     });
-    $app->get('/get-previous-messages', function (Request $request, Response $response) use ($container) {
-        return $container->get(ChatController::class)->getPreviousMessages($request, $response);
-    });
-    $app->get('/get-messages/{recipient}', function (Request $request, Response $response, $args) use ($container) {
-        return $container->get(ChatController::class)->getMessages($request, $response, $args);
-    });
     $app->post('/register', function (Request $request, Response $response) use ($container) {
-        $userController = $container->get(UserController::class);
-        return $userController->register($request, $response);
+        return $container->get(UserController::class)->register($request, $response);
     });
     $app->post('/login', function (Request $request, Response $response) use ($container) {
         return $container->get(AuthController::class)->login($request, $response);
@@ -52,8 +41,8 @@ return function (App $app) {
     $app->get('/login', function (Request $request, Response $response) use ($container) {
         return $container->get(AuthController::class)->showLogin($request, $response);
     });
-    $app->get('/profile', function (Request $request, Response $response) use ($container) {
-        return $container->get(ProfileController::class)->showProfile($request, $response);
+    $app->post('/search', function (Request $request, Response $response) use ($container) {
+        return $container->get(UserController::class)->search($request, $response);
     });
     $app->post('/update-profile-picture', function (Request $request, Response $response, $args) use ($container) {
         $pdo = $container->get(PDO::class);
@@ -95,79 +84,41 @@ return function (App $app) {
         $response->getBody()->write("Error uploading image.");
         return $response->withStatus(400);
     });
-    $app->post('/search', function (Request $request, Response $response) use ($container) {
-        return $container->get(UserController::class)->search($request, $response);
-    });
-    $app->post('/send-message', function (Request $request, Response $response) use ($container) {
-        return $container->get(ChatController::class)->sendMessage($request, $response);
-    });
-    $app->post('/create-chatroom', function (Request $request, Response $response) use ($container) {
-        return $container->get(ChatroomController::class)->createChatroom($request, $response);
-    });
-    $app->get('/get-chatrooms', function (Request $request, Response $response) use ($container) {
-        return $container->get(ChatroomController::class)->getChatrooms($request, $response);
-    });
-    $app->get('/chatroom/{id}', function (Request $request, Response $response, $args) use ($container) {
-        return $container->get(ChatroomController::class)->showChatroom($request, $response, $args);
-    });
+
+    $app->group('', function (\Slim\Routing\RouteCollectorProxy $group) {
+        $group->get('/profile', ProfileController::class . ':showProfile');
+        $group->post('/update-username', ProfileController::class . ':updateUsername');
+        $group->post('/update-password', ProfileController::class . ':updatePassword');
+        $group->post('/toggle-dark-mode', UserController::class . ':toggleDarkMode');
+
+        $group->get('/get-previous-messages', ChatController::class . ':getPreviousMessages');
+        $group->get('/get-messages/{recipient}', ChatController::class . ':getMessages');
+        $group->post('/send-message', ChatController::class . ':sendMessage');
+        $group->post('/speech-to-text', ChatController::class . ':handleSpeechToText');
+        $group->post('/message/{id}/react', ChatController::class . ':reactToMessage');
+
+        $group->get('/get-chatrooms', ChatroomController::class . ':getChatrooms');
+        $group->get('/chatroom/{id}', ChatroomController::class . ':showChatroom');
+        $group->get('/chatroom/{id}/messages', ChatroomController::class . ':getMessages');
+        $group->post('/create-chatroom', ChatroomController::class . ':createChatroom');
+        $group->post('/chatroom/{id}/add-user', ChatroomController::class . ':addUser');
+        $group->post('/chatroom/{id}/suggest-user', ChatroomController::class . ':suggestUser');
+        $group->get('/chatroom/{id}/suggested-users', ChatroomController::class . ':getSuggestedUsers');
+        $group->post('/chatroom/{id}/approve-suggestion', ChatroomController::class . ':approveSuggestion');
+        $group->post('/chatroom/{id}/delete-suggestion', ChatroomController::class . ':deleteSuggestion');
+        $group->get('/chatroom/{id}/users', ChatroomController::class . ':getUsers');
+        $group->post('/chatroom/{id}/remove-user', ChatroomController::class . ':removeUser');
+        $group->post('/chatroom/{id}/leave', ChatroomController::class . ':leaveRoom');
+        $group->post('/chatroom/{id}/grant-admin', ChatroomController::class . ':grantAdmin');
+        $group->get('/chatroom/{id}/is-admin', ChatroomController::class . ':isAdmin');
+        $group->post('/chatroom-message/{id}/react', ChatroomController::class . ':reactToChatroomMessage');
+        $group->get('/chatroom/{id}/user-role', ChatroomController::class . ':getUserRole');
+    })->add(new SessionMiddleware());
+
     $app->get('/{username}', function (Request $request, Response $response, $args) use ($container) {
         return $container->get(UserController::class)->showUserProfile($request, $response, $args);
     });
     $app->get('/chat/{username}', function (Request $request, Response $response, $args) use ($container) {
         return $container->get(ChatController::class)->showChat($request, $response, $args);
-    });
-    $app->get('/chatroom/{id}/user-role', function (Request $request, Response $response, $args) use ($container){
-        return $container->get(ChatroomController::class)->getUserRole($request, $response, $args);
-    });
-    $app->post('/chatroom/{id}/add-user', function (Request $request, Response $response, $args) use ($container) {
-        return $container->get(ChatroomController::class)->addUser($request, $response, $args);
-    });
-    $app->post('/chatroom/{id}/suggest-user', function (Request $request, Response $response, $args) use ($container) {
-        return $container->get(ChatroomController::class)->suggestUser($request, $response, $args);
-    });
-    $app->get('/chatroom/{id}/suggested-users', function (Request $request, Response $response, $args) use ($container) {
-        return $container->get(ChatroomController::class)->getSuggestedUsers($request, $response, $args);
-    });
-    $app->post('/chatroom/{id}/approve-suggestion', function (Request $request, Response $response, $args) use ($container) {
-        return $container->get(ChatroomController::class)->approveSuggestion($request, $response, $args);
-    });
-    $app->post('/chatroom/{id}/delete-suggestion', function (Request $request, Response $response, $args) use ($container) {
-        return $container->get(ChatroomController::class)->deleteSuggestion($request, $response, $args);
-    });
-    $app->get('/chatroom/{id}/users', function (Request $request, Response $response, $args) use ($container) {
-        return $container->get(ChatroomController::class)->getUsers($request, $response, $args);
-    });
-    $app->post('/chatroom/{id}/remove-user', function (Request $request, Response $response, $args) use ($container) {
-        return $container->get(ChatroomController::class)->removeUser($request, $response, $args);
-    });
-    $app->post('/chatroom/{id}/leave', function (Request $request, Response $response, $args) use ($container) {
-        return $container->get(ChatroomController::class)->leaveRoom($request, $response, $args);
-    });
-    $app->get('/chatroom/{id}/messages', function (Request $request, Response $response, $args) use ($container) {
-        return $container->get(ChatroomController::class)->getMessages($request, $response, $args);
-    });
-    $app->get('/chatroom/{id}/is-admin', function (Request $request, Response $response, $args) use ($container) {
-        return $container->get(ChatroomController::class)->isAdmin($request, $response, $args);
-    });
-    $app->post('/update-username', function (Request $request, Response $response) use ($container) {
-        return $container->get(ProfileController::class)->updateUsername($request, $response);
-    });
-    $app->post('/chatroom/{id}/grant-admin', function (Request $request, Response $response, $args) use ($container) {
-        return $container->get(ChatroomController::class)->grantAdmin($request, $response, $args);
-    });
-    $app->post('/update-password', function (Request $request, Response $response) use ($container) {
-        return $container->get(ProfileController::class)->updatePassword($request, $response);
-    });
-    $app->post('/toggle-dark-mode', function (Request $request, Response $response) use ($container) {
-        return $container->get(UserController::class)->toggleDarkMode($request, $response);
-    });
-    $app->post('/message/{id}/react', function (Request $request, Response $response, $args) use ($container) {
-        return $container->get(ChatController::class)->reactToMessage($request, $response, $args);
-    });
-    $app->post('/chatroom-message/{id}/react', function (Request $request, Response $response, $args) use ($container) {
-        return $container->get(ChatroomController::class)->reactToChatroomMessage($request, $response, $args);
-    });
-    $app->post('/speech-to-text', function (Request $request, Response $response) use ($container) {
-        return $container->get(ChatController::class)->handleSpeechToText($request, $response);
     });
 };
