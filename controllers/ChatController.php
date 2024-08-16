@@ -153,7 +153,7 @@ class ChatController
             ['*'],
             'username = :username',
             ['username' => $chatUser]
-        ) ?? null;
+        );
 
         if (!$user) {
             $response->getBody()->write('User not found');
