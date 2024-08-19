@@ -445,7 +445,6 @@ $currentUserId = $_SESSION['user_id'];
 
         messageElement.appendChild(textElement);
 
-        // Add image if it exists
         if (hasImage) {
             const imageElement = document.createElement('img');
             imageElement.src = messageData.image_url;
