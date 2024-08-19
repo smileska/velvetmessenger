@@ -29,28 +29,63 @@ class ChatController
         $sender = $_SESSION['username'];
         $recipient = $parsedBody['recipient'] ?? '';
         $message = $parsedBody['message'] ?? '';
-        $chatroomId = $parsedBody['chatroom_id'] ?? null;
 
-        if (empty($message) || (empty($recipient) && empty($chatroomId))) {
-            $response->getBody()->write('Recipient or chatroom and message are required.');
-            return $response->withStatus(400);
+        if (empty($recipient)) {
+            $data = ['success' => false, 'error' => 'Recipient is required.'];
+            return $this->jsonResponse($response, $data, 400);
         }
 
         try {
-            if ($chatroomId) {
-                $stmt = $pdo->prepare('INSERT INTO chatroom_messages (chatroom_id, sender, message) VALUES (:chatroom_id, :sender, :message)');
-                $stmt->execute(['chatroom_id' => $chatroomId, 'sender' => $sender, 'message' => $message]);
-                return $response->withHeader('Location', '/chatroom/' . $chatroomId)->withStatus(302);
-            } else {
-                $stmt = $pdo->prepare('INSERT INTO messages (sender, recipient, message) VALUES (:sender, :recipient, :message)');
-                $stmt->execute(['sender' => $sender, 'recipient' => $recipient, 'message' => $message]);
-                return $response->withHeader('Location', '/chat/' . $recipient)->withStatus(302);
+            $imageUrl = null;
+            $uploadedFiles = $request->getUploadedFiles();
+            if (!empty($uploadedFiles['image'])) {
+                $uploadedFile = $uploadedFiles['image'];
+                if ($uploadedFile->getError() === UPLOAD_ERR_OK) {
+                    $filename = $this->moveUploadedFile($uploadedFile);
+                    $imageUrl = '/uploads/' . $filename;
+                }
             }
+
+            $stmt = $pdo->prepare('INSERT INTO messages (sender, recipient, message, image_url) VALUES (:sender, :recipient, :message, :image_url)');
+            $stmt->execute([
+                'sender' => $sender,
+                'recipient' => $recipient,
+                'message' => $message,
+                'image_url' => $imageUrl
+            ]);
+
+            $messageId = $pdo->lastInsertId();
+
+            $data = ['success' => true, 'message_id' => $messageId, 'image_url' => $imageUrl];
+            return $this->jsonResponse($response, $data);
         } catch (PDOException $e) {
-            $response->getBody()->write("Error: " . $e->getMessage());
-            return $response->withStatus(500);
+            $data = ['success' => false, 'error' => $e->getMessage()];
+            return $this->jsonResponse($response, $data, 500);
         }
     }
+
+    private function moveUploadedFile($uploadedFile)
+    {
+        $extension = pathinfo($uploadedFile->getClientFilename(), PATHINFO_EXTENSION);
+        $basename = bin2hex(random_bytes(8));
+        $filename = sprintf('%s.%0.8s', $basename, $extension);
+
+        $uploadDir = __DIR__ . '/../public/uploads';
+        $uploadedFile->moveTo($uploadDir . DIRECTORY_SEPARATOR . $filename);
+
+        return $filename;
+    }
+
+    private function jsonResponse(Response $response, array $data, int $status = 200): Response
+    {
+        $payload = json_encode($data);
+        $response->getBody()->write($payload);
+
+        return $response
+            ->withHeader('Content-Type', 'application/json')
+            ->withStatus($status);
+    }
+
 
     public function getMessages(Request $request, Response $response, $args): Response
     {
