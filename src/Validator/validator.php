@@ -45,3 +45,26 @@ function validateUserData($username, $email, $password, $confirm_password) {
 
     return $violations;
 }
+function validateMessageData($message, $recipient, $chatroomId) {
+    $validator = getValidator();
+
+    $messageConstraints = [
+        new Assert\NotBlank(['message' => 'Message should not be blank']),
+    ];
+
+    $recipientOrChatroomConstraints = [
+        new Assert\AtLeastOneOf([
+            new Assert\NotBlank(['message' => 'Either recipient or chatroom ID must be provided']),
+        ]),
+    ];
+
+    $messageViolations = $validator->validate($message, $messageConstraints);
+    $recipientOrChatroomViolations = $validator->validate([$recipient, $chatroomId], $recipientOrChatroomConstraints);
+
+    $violations = array_merge(
+        iterator_to_array($messageViolations),
+        iterator_to_array($recipientOrChatroomViolations)
+    );
+
+    return $violations;
+}
