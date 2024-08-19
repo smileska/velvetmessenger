@@ -163,5 +163,4 @@ class Chatroom
         $stmt->execute(['chatroom_id' => $chatroomId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-
 }
