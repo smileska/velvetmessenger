@@ -32,9 +32,14 @@ class ChatController
         $chatroomId = $parsedBody['chatroom_id'] ?? null;
         $senderId = $_SESSION['user_id'];
 
-        if (empty($message) || (empty($recipient) && empty($chatroomId))) {
-            $response->getBody()->write('Recipient or chatroom and message are required.');
-            return $response->withStatus(400);
+        $violations = validateMessageData($message, $recipient, $chatroomId);
+        if (count($violations) > 0) {
+            $errors = [];
+            foreach ($violations as $violation) {
+                $errors[] = $violation->getMessage();
+            }
+            $response->getBody()->write(json_encode(['errors' => $errors]));
+            return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
         }
 
         try {
