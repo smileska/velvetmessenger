@@ -12,13 +12,25 @@ require('parts/navbar.php');
 
         <form method="post" id="chat-form" class="mt-4 flex">
             <input type="hidden" id="recipient" value="<?= htmlspecialchars($chatUser['username']); ?>">
-            <input type="text" id="message" placeholder="Type your message here" required class="flex-grow p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100">
-            <button type="button" id="upload-audio-btn" class="ml-2 p-2 rounded-full hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
-                </svg>
-            </button>
-            <button type="submit" class="btn-primary ml-3 px-4 py-1 text-white rounded-lg shadow hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:ring-opacity-50">Send</button>
+            <div class="flex mb-2">
+                <input type="text" id="message" placeholder="Type your message here" required class="flex-grow p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100">
+                <button type="button" id="upload-audio-btn" class="ml-2 p-2 rounded-full hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
+                    </svg>
+                </button>
+                <label for="image-upload" class="ml-2 p-2 rounded-full hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer mr-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                    </svg>
+                </label>
+                <input type="file" id="image-upload" accept="image/*" class="hidden">
+            </div>
+            <div id="image-preview" class="mb-2 hidden">
+                <img id="preview-image" src="" alt="Preview" class="max-w-xs max-h-40 rounded-lg">
+                <button type="button" id="remove-image" class="ml-2 text-red-500 hover:text-red-700">Remove</button>
+            </div>
+            <button type="submit" class="btn-primary px-4 py-2 text-white rounded-lg shadow hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:ring-opacity-50">Send</button>
         </form>
         <input type="file" id="audio-file-input" accept="audio/*" style="display:none;">
     </div>
@@ -63,15 +75,42 @@ require('parts/navbar.php');
         const messageInput = document.getElementById('message');
         const recipient = document.getElementById('recipient').value;
         const message = messageInput.value;
+        const imageInput = document.getElementById('image-upload');
 
-        const messageData = JSON.stringify({
-            sender: '<?= htmlspecialchars($_SESSION['username']); ?>',
-            recipient: recipient,
-            message: message
-        });
+        const formData = new FormData();
+        formData.append('recipient', recipient);
+        formData.append('message', message);
 
-        conn.send(messageData);
-        messageInput.value = '';
+        if (imageInput.files.length > 0) {
+            formData.append('image', imageInput.files[0]);
+        }
+
+        fetch('/send-message', {
+            method: 'POST',
+            body: formData
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    messageInput.value = '';
+                    imageInput.value = '';
+                    document.getElementById('image-preview').classList.add('hidden');
+                    const websocketMessage = JSON.stringify({
+                        sender: '<?= htmlspecialchars($_SESSION['username']); ?>',
+                        recipient: recipient,
+                        message: message,
+                        image_url: data.image_url,
+                        id: data.message_id,
+                        timestamp: new Date().toISOString()
+                    });
+                    conn.send(websocketMessage);
+                } else {
+                    console.error('Error sending message:', data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
     });
 
     document.addEventListener('DOMContentLoaded', function() {
@@ -100,32 +139,39 @@ require('parts/navbar.php');
 
     function createMessageElement(messageData) {
         const messageElement = document.createElement('div');
-        messageElement.classList.add('p-2', 'mb-2', 'rounded-lg', 'flex', 'justify-between', 'items-start');
+        const hasImage = !!messageData.image_url;
+        if (hasImage) {
+            messageElement.classList.add('p-2', 'mb-2', 'rounded-lg', 'flex', 'flex-col', 'items-start');
+        } else {
+            messageElement.classList.add('p-2', 'mb-2', 'rounded-lg', 'flex', 'justify-between', 'items-start');
+        }
+
         messageElement.dataset.messageId = messageData.id;
         messageElement.dataset.reaction = messageData.reaction || '';
 
         const textElement = document.createElement('span');
-        textElement.classList.add('mr-2');
-
-        if (document.body.classList.contains('dark-mode')) {
-            if (messageData.sender === '<?= htmlspecialchars($_SESSION['username']); ?>') {
-                messageElement.classList.add('bg-blue-100', 'self-end');
-                textElement.textContent = `You: ${messageData.message}`;
-            } else {
-                messageElement.classList.add('bg-gray-100', 'self-start');
-                textElement.textContent = `${messageData.sender}: ${messageData.message}`;
-            }
+        if (hasImage) {
+            textElement.classList.add('mb-2');
         } else {
-            if (messageData.sender === '<?= htmlspecialchars($_SESSION['username']); ?>') {
-                messageElement.classList.add('bg-blue-100', 'self-end');
-                textElement.textContent = `You: ${messageData.message}`;
-            } else {
-                messageElement.classList.add('bg-gray-100', 'self-start');
-                textElement.textContent = `${messageData.sender}: ${messageData.message}`;
-            }
+            textElement.classList.add('mr-2');
+        }
+
+        if (messageData.sender === '<?= htmlspecialchars($_SESSION['username']); ?>') {
+            messageElement.classList.add('bg-blue-100', 'self-end');
+            textElement.textContent = `You: ${messageData.message}`;
+        } else {
+            messageElement.classList.add('bg-gray-100', 'self-start');
+            textElement.textContent = `${messageData.sender}: ${messageData.message}`;
         }
 
         messageElement.appendChild(textElement);
+
+        if (hasImage) {
+            const imageElement = document.createElement('img');
+            imageElement.src = messageData.image_url;
+            imageElement.classList.add('max-w-xs', 'max-h-40', 'rounded-lg', 'mt-2');
+            messageElement.appendChild(imageElement);
+        }
 
         const reactionContainer = createReactionContainer(messageData.id, true, messageData.reaction_type);
         const reactionPopup = reactionContainer.querySelector('.reaction-popup');
@@ -503,6 +549,23 @@ require('parts/navbar.php');
                 console.error('Error:', error);
             }
         });
+    });
+    document.getElementById('image-upload').addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('preview-image').src = e.target.result;
+                document.getElementById('image-preview').classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    document.getElementById('remove-image').addEventListener('click', function() {
+        document.getElementById('image-upload').value = '';
+        document.getElementById('preview-image').src = '';
+        document.getElementById('image-preview').classList.add('hidden');
     });
 
 </script>
