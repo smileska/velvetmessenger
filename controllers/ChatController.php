@@ -29,36 +29,62 @@ class ChatController
         $sender = $_SESSION['username'];
         $recipient = $parsedBody['recipient'] ?? '';
         $message = $parsedBody['message'] ?? '';
+        $chatroomId = $parsedBody['chatroom_id'] ?? null;
+        $senderId = $_SESSION['user_id'];
 
-        if (empty($recipient)) {
-            $data = ['success' => false, 'error' => 'Recipient is required.'];
-            return $this->jsonResponse($response, $data, 400);
+        if (empty($message) || (empty($recipient) && empty($chatroomId))) {
+            $response->getBody()->write('Recipient or chatroom and message are required.');
+            return $response->withStatus(400);
         }
 
         try {
-            $imageUrl = null;
-            $uploadedFiles = $request->getUploadedFiles();
-            if (!empty($uploadedFiles['image'])) {
-                $uploadedFile = $uploadedFiles['image'];
-                if ($uploadedFile->getError() === UPLOAD_ERR_OK) {
-                    $filename = $this->moveUploadedFile($uploadedFile);
-                    $imageUrl = '/uploads/' . $filename;
+            if ($chatroomId) {
+                $imageUrl = null;
+                $uploadedFiles = $request->getUploadedFiles();
+                if (!empty($uploadedFiles['image'])) {
+                    $uploadedFile = $uploadedFiles['image'];
+                    if ($uploadedFile->getError() === UPLOAD_ERR_OK) {
+                        $filename = $this->moveUploadedFile($uploadedFile);
+                        $imageUrl = '/uploads/' . $filename;
+                    }
                 }
+                $stmt = $pdo->prepare('INSERT INTO chatroom_messages (chatroom_id, user_id, message, image_url) VALUES (:chatroom_id, :user_id, :message, :image_url)');
+                $stmt->execute([
+                    'chatroom_id' => $chatroomId,
+                    'user_id' => $senderId,
+                    'message' => $message,
+                    'image_url' => $imageUrl
+                ]);
+
+                $messageId = $pdo->lastInsertId();
+                $data = ['success' => true, 'message_id' => $messageId, 'image_url' => $imageUrl];
+                return $this->jsonResponse($response, $data);
+            }  else {
+                $imageUrl = null;
+                $uploadedFiles = $request->getUploadedFiles();
+                if (!empty($uploadedFiles['image'])) {
+                    $uploadedFile = $uploadedFiles['image'];
+                    if ($uploadedFile->getError() === UPLOAD_ERR_OK) {
+                        $filename = $this->moveUploadedFile($uploadedFile);
+                        $imageUrl = '/uploads/' . $filename;
+                    }
+                }
+
+                $stmt = $pdo->prepare('INSERT INTO messages (sender, recipient, message, image_url) VALUES (:sender, :recipient, :message, :image_url)');
+                $stmt->execute([
+                    'sender' => $sender,
+                    'recipient' => $recipient,
+                    'message' => $message,
+                    'image_url' => $imageUrl
+                ]);
+
+                $messageId = $pdo->lastInsertId();
+
+                $data = ['success' => true, 'message_id' => $messageId, 'image_url' => $imageUrl];
+                return $this->jsonResponse($response, $data);
             }
-
-            $stmt = $pdo->prepare('INSERT INTO messages (sender, recipient, message, image_url) VALUES (:sender, :recipient, :message, :image_url)');
-            $stmt->execute([
-                'sender' => $sender,
-                'recipient' => $recipient,
-                'message' => $message,
-                'image_url' => $imageUrl
-            ]);
-
-            $messageId = $pdo->lastInsertId();
-
-            $data = ['success' => true, 'message_id' => $messageId, 'image_url' => $imageUrl];
-            return $this->jsonResponse($response, $data);
-        } catch (PDOException $e) {
+        }
+        catch (PDOException $e) {
             $data = ['success' => false, 'error' => $e->getMessage()];
             return $this->jsonResponse($response, $data, 500);
         }
