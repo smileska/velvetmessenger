@@ -15,7 +15,7 @@ $currentUserId = $_SESSION['user_id'];
             <!-- poraki -->
         </div>
 
-        <form method="post" id="chat-form" class="mt-4 mb-3 flex items-center">
+        <form method="post" id="chat-form" class="mt-4 mb-3 flex items-center" enctype="multipart/form-data">
             <input type="hidden" id="chatroom_id" value="<?= htmlspecialchars($chatroomId); ?>">
             <div class="flex-grow">
                 <input type="text" id="message" placeholder="Type your message here" required class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -25,6 +25,16 @@ $currentUserId = $_SESSION['user_id'];
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
                 </svg>
             </button>
+            <label for="image-upload" class="ml-2 p-2 rounded-full hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                </svg>
+            </label>
+            <input type="file" id="image-upload" accept="image/*" class="hidden" name="image">
+            <div id="image-preview" class="mb-2 hidden">
+                <img id="preview-image" src="" alt="Preview" class="max-w-xs max-h-40 rounded-lg">
+                <button type="button" id="remove-image" class="ml-2 text-red-500 hover:text-red-700">Remove</button>
+            </div>
             <button type="submit" class="btn-primary ml-2 px-4 py-2 bg-blue-500 text-white rounded-lg shadow hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">Send</button>
         </form>
 
@@ -127,19 +137,50 @@ $currentUserId = $_SESSION['user_id'];
         event.preventDefault();
         const messageInput = document.getElementById('message');
         const message = messageInput.value;
+        const imageInput = document.getElementById('image-upload');
+        const file = imageInput.files[0];
 
-        const messageData = {
-            type: 'message',
-            chatroom_id: chatroomId,
-            sender_id: document.getElementById('current-user-id').value,
-            user_id: document.getElementById('current-user-id').value,
-            username: document.getElementById('current-username').value,
-            message: message
-        };
+        const formData = new FormData();
+        formData.append('chatroom_id', chatroomId);
+        formData.append('message', message);
+        formData.append('sender_id', document.getElementById('current-user-id').value);
+        formData.append('user_id', document.getElementById('current-user-id').value);
+        formData.append('username', document.getElementById('current-username').value);
 
-        conn.send(JSON.stringify(messageData));
-        messageInput.value = '';
+        if (file) {
+            formData.append('image', file);
+        }
+
+        fetch('/send-message', {
+            method: 'POST',
+            body: formData
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const messageData = {
+                        type: 'message',
+                        chatroom_id: chatroomId,
+                        sender_id: document.getElementById('current-user-id').value,
+                        user_id: document.getElementById('current-user-id').value,
+                        username: document.getElementById('current-username').value,
+                        message: message,
+                        image_url: data.image_url
+                    };
+                    conn.send(JSON.stringify(messageData));
+                    messageInput.value = '';
+                    imageInput.value = '';
+                    document.getElementById('image-preview').classList.add('hidden');
+                    document.getElementById('preview-image').src = '';
+                } else {
+                    console.error('Error sending message:', data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
     });
+
 
     document.getElementById('add-user-form').addEventListener('submit', function(event) {
         event.preventDefault();
@@ -376,12 +417,20 @@ $currentUserId = $_SESSION['user_id'];
 
     function createMessageElement(messageData) {
         const messageElement = document.createElement('div');
-        messageElement.classList.add('p-2', 'mb-2', 'rounded-lg', 'flex', 'justify-between', 'items-start');
+        const hasImage = !!messageData.image_url;
+        if (hasImage) {
+            messageElement.classList.add('p-2', 'mb-2', 'rounded-lg', 'flex', 'flex-col', 'items-start');
+        } else {
+            messageElement.classList.add('p-2', 'mb-2', 'rounded-lg', 'flex', 'justify-between', 'items-start');
+        }
         messageElement.dataset.messageId = messageData.id;
-        messageElement.dataset.reaction = messageData.reaction_type || '';
-
+        messageElement.dataset.reaction = messageData.reaction || '';
         const textElement = document.createElement('span');
-        textElement.classList.add('mr-2');
+        if (hasImage) {
+            textElement.classList.add('mb-2');
+        } else {
+            textElement.classList.add('mr-2');
+        }
 
         const senderId = parseInt(messageData.user_id || messageData.sender_id);
         const currentUserId = parseInt(document.getElementById('current-user-id').value);
@@ -393,12 +442,28 @@ $currentUserId = $_SESSION['user_id'];
             messageElement.classList.add('bg-gray-100', 'self-start');
             textElement.textContent = `${messageData.username}: ${messageData.message}`;
         }
+
         messageElement.appendChild(textElement);
 
-        addReactionToMessage(messageElement, messageData.id, false, messageData.reaction_type);
+        // Add image if it exists
+        if (hasImage) {
+            const imageElement = document.createElement('img');
+            imageElement.src = messageData.image_url;
+            imageElement.classList.add('max-w-xs', 'max-h-40', 'rounded-lg', 'mt-2');
+            messageElement.appendChild(imageElement);
+        }
+        const reactionContainer = createReactionContainer(messageData.id, true, messageData.reaction_type);
+        const reactionPopup = reactionContainer.querySelector('.reaction-popup');
+        if (messageElement.classList.contains('bg-blue-100')) {
+            reactionPopup.classList.add('bg-blue-100');
+        } else {
+            reactionPopup.classList.add('bg-gray-100');
+        }
+        messageElement.appendChild(reactionContainer);
 
         return messageElement;
     }
+
 
     document.addEventListener('DOMContentLoaded', function() {
         loadPreviousMessages();
