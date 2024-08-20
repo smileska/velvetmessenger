@@ -9,10 +9,12 @@ use PDO;
 class Chat implements MessageComponentInterface {
     protected $clients;
     protected $pdo;
+    protected $userConnections;
 
     public function __construct(PDO $pdo) {
         $this->clients = new \SplObjectStorage;
         $this->pdo = $pdo;
+        $this->userConnections = [];
     }
 
     public function onOpen(ConnectionInterface $conn) {
@@ -20,30 +22,33 @@ class Chat implements MessageComponentInterface {
         echo "New connection! ({$conn->resourceId})\n";
     }
 
+    private function handleAuthentication(ConnectionInterface $conn, $data) {
+        if (isset($data['username'])) {
+            $username = $data['username'];
+            $this->userConnections[$username] = $conn;
+            $conn->username = $username;  // Store username on the connection object
+            echo "User {$username} authenticated (Connection {$conn->resourceId})\n";
+        }
+    }
     public function onMessage(ConnectionInterface $from, $msg) {
         $data = json_decode($msg, true);
 
-        if (isset($data['type']) && $data['type'] === 'reaction') {
-            $this->handleReaction($data);
+        if (isset($data['type'])) {
+            switch ($data['type']) {
+                case 'authentication':
+                    $this->handleAuthentication($from, $data);
+                    break;
+                case 'reaction':
+                    $this->handleReaction($data);
+                    break;
+                case 'private_message':
+                    $this->handlePrivateMessage($data);  // Remove $from here
+                    break;
+                default:
+                    echo "Unknown message type received\n";
+            }
         } else {
-            $numRecv = count($this->clients);
-            echo sprintf('Connection %d sending message "%s" to %d other connection%s' . "\n"
-                , $from->resourceId, $msg, $numRecv, $numRecv == 1 ? '' : 's');
-
-            $data = json_decode($msg, true);
-
-            if (isset($data['type']) && $data['type'] === 'message') {
-                $msg = $this->handleChatroomMessage($data);
-            } elseif (isset($data['sender']) && isset($data['recipient']) && isset($data['message'])) {
-                $this->handlePrivateMessage($data);
-            } else {
-                echo "Invalid message format received\n";
-                return;
-            }
-
-            foreach ($this->clients as $client) {
-                $client->send($msg);
-            }
+            echo "Invalid message format received\n";
         }
     }
     private function handleReaction($data) {
@@ -95,16 +100,39 @@ class Chat implements MessageComponentInterface {
     }
 
     private function handlePrivateMessage($data) {
+        $sender = $data['sender'];
+        $recipient = $data['recipient'];
+        $message = $data['message'];
+
+        // Store the message in the database
         $stmt = $this->pdo->prepare('INSERT INTO messages (sender, recipient, message) VALUES (:sender, :recipient, :message)');
         $stmt->execute([
-            'sender' => $data['sender'],
-            'recipient' => $data['recipient'],
-            'message' => $data['message']
+            'sender' => $sender,
+            'recipient' => $recipient,
+            'message' => $message
         ]);
+
+        $messageId = $this->pdo->lastInsertId();
+        $data['id'] = $messageId;
+
+        // Send to recipient
+        if (isset($this->userConnections[$recipient])) {
+            $this->userConnections[$recipient]->send(json_encode($data));
+        }
+
+        // Send back to sender
+        if (isset($this->userConnections[$sender])) {
+            $this->userConnections[$sender]->send(json_encode($data));
+        }
+
+        echo "Private message sent from {$sender} to {$recipient}\n";
     }
 
     public function onClose(ConnectionInterface $conn) {
         $this->clients->detach($conn);
+        if (isset($conn->username)) {
+            unset($this->userConnections[$conn->username]);
+        }
         echo "Connection {$conn->resourceId} has disconnected\n";
     }
 
