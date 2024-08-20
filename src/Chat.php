@@ -26,7 +26,7 @@ class Chat implements MessageComponentInterface {
         if (isset($data['username'])) {
             $username = $data['username'];
             $this->userConnections[$username] = $conn;
-            $conn->username = $username;  // Store username on the connection object
+            $conn->username = $username;
             echo "User {$username} authenticated (Connection {$conn->resourceId})\n";
         }
     }
@@ -42,7 +42,7 @@ class Chat implements MessageComponentInterface {
                     $this->handleReaction($data);
                     break;
                 case 'private_message':
-                    $this->handlePrivateMessage($data);  // Remove $from here
+                    $this->handlePrivateMessage($data);
                     break;
                 default:
                     echo "Unknown message type received\n";
@@ -103,8 +103,6 @@ class Chat implements MessageComponentInterface {
         $sender = $data['sender'];
         $recipient = $data['recipient'];
         $message = $data['message'];
-
-        // Store the message in the database
         $stmt = $this->pdo->prepare('INSERT INTO messages (sender, recipient, message) VALUES (:sender, :recipient, :message)');
         $stmt->execute([
             'sender' => $sender,
@@ -114,13 +112,9 @@ class Chat implements MessageComponentInterface {
 
         $messageId = $this->pdo->lastInsertId();
         $data['id'] = $messageId;
-
-        // Send to recipient
         if (isset($this->userConnections[$recipient])) {
             $this->userConnections[$recipient]->send(json_encode($data));
         }
-
-        // Send back to sender
         if (isset($this->userConnections[$sender])) {
             $this->userConnections[$sender]->send(json_encode($data));
         }
