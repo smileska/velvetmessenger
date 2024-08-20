@@ -50,17 +50,22 @@ require('parts/navbar.php');
 
     conn.onmessage = function(e) {
         const messageData = JSON.parse(e.data);
+        const currentUser = '<?= htmlspecialchars($_SESSION['username']); ?>';
+        const chatPartner = '<?= htmlspecialchars($chatUser['username']); ?>';
+
         if (messageData.type === 'reaction') {
             updateReactionDisplay(messageData.message_id, messageData.reaction_type);
         }
-        else if (!messageData.type && (messageData.sender === '<?= htmlspecialchars($_SESSION['username']); ?>' || messageData.recipient === '<?= htmlspecialchars($_SESSION['username']); ?>')) {
+        else if (
+            (messageData.sender === currentUser && messageData.recipient === chatPartner) ||
+            (messageData.sender === chatPartner && messageData.recipient === currentUser)
+        ) {
             const chatBox = document.getElementById('chat-box');
             const messageElement = createMessageElement(messageData);
             chatBox.appendChild(messageElement);
             chatBox.scrollTop = chatBox.scrollHeight;
         }
     };
-
     conn.onerror = function(error) {
     };
 
