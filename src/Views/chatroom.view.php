@@ -760,5 +760,21 @@ $currentUserId = $_SESSION['user_id'];
             }
         });
     });
+    document.getElementById('image-upload').addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('preview-image').src = e.target.result;
+                document.getElementById('image-preview').classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+    });
 
+    document.getElementById('remove-image').addEventListener('click', function() {
+        document.getElementById('image-upload').value = '';
+        document.getElementById('preview-image').src = '';
+        document.getElementById('image-preview').classList.add('hidden');
+    });
 </script>
