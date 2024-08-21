@@ -90,8 +90,13 @@ $currentUserId = $_SESSION['user_id'];
     var conn = new WebSocket('ws://localhost:8080');
     var chatroomId = <?= json_encode($chatroomId) ?>;
     const currentUserId = <?= json_encode($currentUserId); ?>;
-
+    const currentUsername = document.getElementById('current-username').value;
     conn.onopen = function(e) {
+        conn.send(JSON.stringify({
+            type: 'authentication',
+            username: currentUsername,
+            chatroomId: chatroomId
+        }));
     };
 
     window.addEventListener('load', loadChatroomUsers);
@@ -106,21 +111,11 @@ $currentUserId = $_SESSION['user_id'];
         const messageData = JSON.parse(e.data);
         if (messageData.type === 'reaction') {
             updateReactionDisplay(messageData.message_id, messageData.reaction_type);
-        } else {
-            if (messageData.chatroom_id == chatroomId) {
-                const chatBox = document.getElementById('chat-box');
-                const messageElement = createMessageElement(messageData);
-                chatBox.appendChild(messageElement);
-                chatBox.scrollTop = chatBox.scrollHeight;
-                let messages = localStorage.getItem('chatroom-' + chatroomId);
-                if (messages) {
-                    messages = JSON.parse(messages);
-                } else {
-                    messages = [];
-                }
-                messages.push(messageData);
-                localStorage.setItem('chatroom-' + chatroomId, JSON.stringify(messages));
-            }
+        } else if (messageData.type === 'message' && messageData.chatroom_id === chatroomId) {
+            const chatBox = document.getElementById('chat-box');
+            const messageElement = createMessageElement(messageData);
+            chatBox.appendChild(messageElement);
+            chatBox.scrollTop = chatBox.scrollHeight;
         }
     };
 
@@ -138,7 +133,6 @@ $currentUserId = $_SESSION['user_id'];
         const messageInput = document.getElementById('message');
         const message = messageInput.value;
         const imageInput = document.getElementById('image-upload');
-        const file = imageInput.files[0];
 
         const formData = new FormData();
         formData.append('chatroom_id', chatroomId);
@@ -147,8 +141,8 @@ $currentUserId = $_SESSION['user_id'];
         formData.append('user_id', document.getElementById('current-user-id').value);
         formData.append('username', document.getElementById('current-username').value);
 
-        if (file) {
-            formData.append('image', file);
+        if (imageInput.files.length > 0) {
+            formData.append('image', imageInput.files[0]);
         }
 
         fetch('/send-message', {
@@ -165,9 +159,17 @@ $currentUserId = $_SESSION['user_id'];
                         user_id: document.getElementById('current-user-id').value,
                         username: document.getElementById('current-username').value,
                         message: message,
-                        image_url: data.image_url
+                        image_url: data.image_url,
+                        id: data.message_id,
+                        timestamp: new Date().toISOString()
                     };
                     conn.send(JSON.stringify(messageData));
+
+                    const chatBox = document.getElementById('chat-box');
+                    const messageElement = createMessageElement(messageData);
+                    chatBox.appendChild(messageElement);
+                    chatBox.scrollTop = chatBox.scrollHeight;
+
                     messageInput.value = '';
                     imageInput.value = '';
                     document.getElementById('image-preview').classList.add('hidden');
@@ -180,6 +182,7 @@ $currentUserId = $_SESSION['user_id'];
                 console.error('Error:', error);
             });
     });
+
 
 
     document.getElementById('add-user-form').addEventListener('submit', function(event) {
@@ -312,18 +315,12 @@ $currentUserId = $_SESSION['user_id'];
             });
     }
 
-
-    const currentUsername = document.getElementById('current-username').value;
-
     function loadChatroomUsers() {
         fetch(`/chatroom/${chatroomId}/users`)
             .then(response => response.json())
             .then(users => {
                 const usersList = document.getElementById('chatroom-users-list');
                 usersList.innerHTML = '';
-
-                const currentUsername = document.getElementById('current-username').value;
-
                 users.forEach(user => {
                     const li = document.createElement('li');
                     li.textContent = user.username;
@@ -425,6 +422,7 @@ $currentUserId = $_SESSION['user_id'];
         }
         messageElement.dataset.messageId = messageData.id;
         messageElement.dataset.reaction = messageData.reaction || '';
+
         const textElement = document.createElement('span');
         if (hasImage) {
             textElement.classList.add('mb-2');
@@ -451,6 +449,7 @@ $currentUserId = $_SESSION['user_id'];
             imageElement.classList.add('max-w-xs', 'max-h-40', 'rounded-lg', 'mt-2');
             messageElement.appendChild(imageElement);
         }
+
         const reactionContainer = createReactionContainer(messageData.id, true, messageData.reaction_type);
         const reactionPopup = reactionContainer.querySelector('.reaction-popup');
         if (messageElement.classList.contains('bg-blue-100')) {
@@ -463,9 +462,9 @@ $currentUserId = $_SESSION['user_id'];
         return messageElement;
     }
 
-
     document.addEventListener('DOMContentLoaded', function() {
         loadPreviousMessages();
+        checkUserRole();
     });
 
     document.addEventListener('DOMContentLoaded', function() {

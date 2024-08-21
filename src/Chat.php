@@ -33,22 +33,71 @@ class Chat implements MessageComponentInterface {
     public function onMessage(ConnectionInterface $from, $msg) {
         $data = json_decode($msg, true);
 
-        if (isset($data['type'])) {
-            switch ($data['type']) {
-                case 'authentication':
-                    $this->handleAuthentication($from, $data);
-                    break;
-                case 'reaction':
-                    $this->handleReaction($data);
-                    break;
-                case 'private_message':
-                    $this->handlePrivateMessage($data);
-                    break;
-                default:
-                    echo "Unknown message type received\n";
-            }
-        } else {
+        if (!$data || !isset($data['type'])) {
             echo "Invalid message format received\n";
+            return;
+        }
+
+        switch ($data['type']) {
+            case 'authentication':
+                $this->handleAuthentication($from, $data);
+                break;
+            case 'message':
+                $this->handleMessage($from, $data);
+                break;
+            case 'reaction':
+                $this->handleReaction($data);
+                break;
+            default:
+                echo "Unknown message type received: {$data['type']}\n";
+        }
+    }
+    private function handleMessage(ConnectionInterface $from, $data)
+    {
+        if (isset($data['chatroom_id'])) {
+            $chatroomId = $data['chatroom_id'];
+            $senderId = $data['sender_id'];
+            $message = $data['message'];
+            $imageUrl = $data['image_url'] ?? null;
+            $messageId = $data['id'];
+
+            $stmt = $this->pdo->prepare('INSERT INTO chatroom_messages (id, chatroom_id, user_id, message, image_url) VALUES (:id, :chatroom_id, :user_id, :message, :image_url)');
+            $stmt->execute([
+                'id' => $messageId,
+                'chatroom_id' => $chatroomId,
+                'user_id' => $senderId,
+                'message' => $message,
+                'image_url' => $imageUrl
+            ]);
+
+            foreach ($this->clients as $client) {
+                if (isset($client->chatroomId) && $client->chatroomId == $chatroomId) {
+                    $client->send(json_encode($data));
+                }
+            }
+
+            echo "Message sent to chatroom {$chatroomId}\n";
+        } else {
+            $sender = $data['sender'];
+            $recipient = $data['recipient'];
+            $message = $data['message'];
+            $imageUrl = $data['image_url'] ?? null;
+            $messageId = $data['id'];
+
+            $stmt = $this->pdo->prepare('INSERT INTO messages (id, sender, recipient, message, image_url) VALUES (:id, :sender, :recipient, :message, :image_url)');
+            $stmt->execute([
+                'id' => $messageId,
+                'sender' => $sender,
+                'recipient' => $recipient,
+                'message' => $message,
+                'image_url' => $imageUrl
+            ]);
+
+            if (isset($this->userConnections[$recipient])) {
+                $this->userConnections[$recipient]->send(json_encode($data));
+            }
+
+            echo "Message sent from {$sender} to {$recipient}\n";
         }
     }
     private function handleReaction($data) {
