@@ -10,33 +10,54 @@ class Chat implements MessageComponentInterface {
     protected $clients;
     protected $pdo;
     protected $userConnections;
+    protected $chatroomConnections;
 
     public function __construct(PDO $pdo) {
         $this->clients = new \SplObjectStorage;
         $this->pdo = $pdo;
         $this->userConnections = [];
+        $this->chatroomConnections = [];
     }
 
     public function onOpen(ConnectionInterface $conn) {
         $this->clients->attach($conn);
+        $conn->username = null;
         echo "New connection! ({$conn->resourceId})\n";
     }
 
     private function handleAuthentication(ConnectionInterface $conn, $data) {
-        if (isset($data['username'])) {
-            $username = $data['username'];
-            $this->userConnections[$username] = $conn;
-            $conn->username = $username;
-            echo "User {$username} authenticated (Connection {$conn->resourceId})\n";
+        $username = $data['username'];
+        $conn->username = $username;
+        $this->userConnections[$username] = $conn;
+
+        if (isset($data['chatroomId'])) {
+            $chatroomId = $data['chatroomId'];
+            $conn->chatroomId = $chatroomId;
+            if (!isset($this->chatroomConnections[$chatroomId])) {
+                $this->chatroomConnections[$chatroomId] = new \SplObjectStorage;
+            }
+            $this->chatroomConnections[$chatroomId]->attach($conn);
+            echo "User {$username} joined chatroom {$chatroomId}\n";
         }
+
+        echo "User {$username} authenticated (Connection {$conn->resourceId})\n";
     }
     public function onMessage(ConnectionInterface $from, $msg) {
+        echo "Raw message received from connection {$from->resourceId}: " . $msg . "\n";
+
         $data = json_decode($msg, true);
 
-        if (!$data || !isset($data['type'])) {
-            echo "Invalid message format received\n";
+        if (!$data) {
+            echo "Failed to parse JSON for connection {$from->resourceId}. Error: " . json_last_error_msg() . "\n";
             return;
         }
+
+        if (!isset($data['type'])) {
+            echo "Message type not set for connection {$from->resourceId}. Full message: " . $msg . "\n";
+            return;
+        }
+
+        echo "Received message of type: {$data['type']} from connection {$from->resourceId}\n";
 
         switch ($data['type']) {
             case 'authentication':
@@ -49,55 +70,14 @@ class Chat implements MessageComponentInterface {
                 $this->handleReaction($data);
                 break;
             default:
-                echo "Unknown message type received: {$data['type']}\n";
+                echo "Unknown message type received: {$data['type']} from connection {$from->resourceId}\n";
         }
     }
-    private function handleMessage(ConnectionInterface $from, $data)
-    {
+    private function handleMessage(ConnectionInterface $from, $data) {
         if (isset($data['chatroom_id'])) {
-            $chatroomId = $data['chatroom_id'];
-            $senderId = $data['sender_id'];
-            $message = $data['message'];
-            $imageUrl = $data['image_url'] ?? null;
-            $messageId = $data['id'];
-
-            $stmt = $this->pdo->prepare('INSERT INTO chatroom_messages (id, chatroom_id, user_id, message, image_url) VALUES (:id, :chatroom_id, :user_id, :message, :image_url)');
-            $stmt->execute([
-                'id' => $messageId,
-                'chatroom_id' => $chatroomId,
-                'user_id' => $senderId,
-                'message' => $message,
-                'image_url' => $imageUrl
-            ]);
-
-            foreach ($this->clients as $client) {
-                if (isset($client->chatroomId) && $client->chatroomId == $chatroomId) {
-                    $client->send(json_encode($data));
-                }
-            }
-
-            echo "Message sent to chatroom {$chatroomId}\n";
+            $this->handleChatroomMessage($from, $data);
         } else {
-            $sender = $data['sender'];
-            $recipient = $data['recipient'];
-            $message = $data['message'];
-            $imageUrl = $data['image_url'] ?? null;
-            $messageId = $data['id'];
-
-            $stmt = $this->pdo->prepare('INSERT INTO messages (id, sender, recipient, message, image_url) VALUES (:id, :sender, :recipient, :message, :image_url)');
-            $stmt->execute([
-                'id' => $messageId,
-                'sender' => $sender,
-                'recipient' => $recipient,
-                'message' => $message,
-                'image_url' => $imageUrl
-            ]);
-
-            if (isset($this->userConnections[$recipient])) {
-                $this->userConnections[$recipient]->send(json_encode($data));
-            }
-
-            echo "Message sent from {$sender} to {$recipient}\n";
+            $this->handlePrivateMessage($from, $data);
         }
     }
     private function handleReaction($data) {
@@ -126,55 +106,44 @@ class Chat implements MessageComponentInterface {
         }
     }
 
-    private function handleChatroomMessage($data) {
-        if (!isset($data['chatroom_id']) || !isset($data['sender_id']) || !isset($data['message'])) {
-            echo "Invalid chatroom message format\n";
-            return;
+    private function handleChatroomMessage(ConnectionInterface $from, $data) {
+        $chatroomId = $data['chatroom_id'];
+        echo "Handling chatroom message for room {$chatroomId}\n";
+
+        if (isset($this->chatroomConnections[$chatroomId])) {
+            foreach ($this->chatroomConnections[$chatroomId] as $client) {
+                if ($client !== $from) {
+                    $client->send(json_encode($data));
+                    echo "Sent message to user in chatroom {$chatroomId} (Connection {$client->resourceId})\n";
+                }
+            }
+        } else {
+            echo "Error: Chatroom {$chatroomId} not found in connections\n";
         }
-
-        $stmt = $this->pdo->prepare('SELECT username FROM users WHERE id = :user_id');
-        $stmt->execute(['user_id' => $data['sender_id']]);
-        $sender = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        $stmt = $this->pdo->prepare('INSERT INTO chatroom_messages (chatroom_id, user_id, message) VALUES (:chatroom_id, :user_id, :message)');
-        $stmt->execute([
-            'chatroom_id' => $data['chatroom_id'],
-            'user_id' => $data['sender_id'],
-            'message' => $data['message']
-        ]);
-
-        $data['username'] = $sender['username'];
-
-        return json_encode($data);
     }
 
-    private function handlePrivateMessage($data) {
+    private function handlePrivateMessage(ConnectionInterface $from, $data) {
         $sender = $data['sender'];
         $recipient = $data['recipient'];
-        $message = $data['message'];
-        $stmt = $this->pdo->prepare('INSERT INTO messages (sender, recipient, message) VALUES (:sender, :recipient, :message)');
-        $stmt->execute([
-            'sender' => $sender,
-            'recipient' => $recipient,
-            'message' => $message
-        ]);
+        echo "Handling private message from {$sender} to {$recipient}\n";
 
-        $messageId = $this->pdo->lastInsertId();
-        $data['id'] = $messageId;
         if (isset($this->userConnections[$recipient])) {
             $this->userConnections[$recipient]->send(json_encode($data));
+            echo "Sent private message to {$recipient}\n";
+        } else {
+            echo "Error: Recipient {$recipient} not found in connections\n";
         }
-        if (isset($this->userConnections[$sender])) {
-            $this->userConnections[$sender]->send(json_encode($data));
-        }
-
-        echo "Private message sent from {$sender} to {$recipient}\n";
     }
 
     public function onClose(ConnectionInterface $conn) {
         $this->clients->detach($conn);
         if (isset($conn->username)) {
             unset($this->userConnections[$conn->username]);
+            echo "User {$conn->username} disconnected\n";
+        }
+        if (isset($conn->chatroomId)) {
+            $this->chatroomConnections[$conn->chatroomId]->detach($conn);
+            echo "User left chatroom {$conn->chatroomId}\n";
         }
         echo "Connection {$conn->resourceId} has disconnected\n";
     }
