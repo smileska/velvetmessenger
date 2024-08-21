@@ -44,28 +44,38 @@ require('parts/navbar.php');
         5: '😢'
     };
     var conn = new WebSocket('ws://localhost:8080');
-
+    const currentUser = '<?= htmlspecialchars($_SESSION['username']); ?>';
+    const chatPartner = '<?= htmlspecialchars($chatUser['username']); ?>';
     conn.onopen = function(e) {
+        console.log("WebSocket connection established");
+        const authMessage = {
+            type: 'authentication',
+            username: currentUser
+        };
+        if (typeof chatroomId !== 'undefined') {
+            authMessage.chatroomId = chatroomId;
+        }
+        console.log("Sending authentication message:", authMessage);
+        conn.send(JSON.stringify(authMessage));
     };
 
     conn.onmessage = function(e) {
-        const messageData = JSON.parse(e.data);
-        const currentUser = '<?= htmlspecialchars($_SESSION['username']); ?>';
-        const chatPartner = '<?= htmlspecialchars($chatUser['username']); ?>';
+        console.log("Raw message received:", e.data);
+        try {
+            const messageData = JSON.parse(e.data);
+            console.log("Parsed message data:", messageData);
 
-        if (messageData.type === 'reaction') {
-            updateReactionDisplay(messageData.message_id, messageData.reaction_type);
-        }
-        else if (messageData.type === 'message') {
-            if (
-                (messageData.sender === currentUser && messageData.recipient === chatPartner) ||
-                (messageData.sender === chatPartner && messageData.recipient === currentUser)
-            ) {
+            if (messageData.type === 'reaction') {
+                updateReactionDisplay(messageData.message_id, messageData.reaction_type);
+            }
+            else if (messageData.type === 'message') {
                 const chatBox = document.getElementById('chat-box');
                 const messageElement = createMessageElement(messageData);
                 chatBox.appendChild(messageElement);
                 chatBox.scrollTop = chatBox.scrollHeight;
             }
+        } catch (error) {
+            console.error("Error processing received message:", error);
         }
     };
     conn.onerror = function(error) {
@@ -99,24 +109,27 @@ require('parts/navbar.php');
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    messageInput.value = '';
-                    imageInput.value = '';
-                    document.getElementById('image-preview').classList.add('hidden');
                     const websocketMessage = {
                         type: 'message',
-                        sender: '<?= htmlspecialchars($_SESSION['username']); ?>',
+                        sender: currentUser,
                         recipient: recipient,
                         message: message,
                         image_url: data.image_url,
                         id: data.message_id,
                         timestamp: new Date().toISOString()
                     };
+
+                    console.log("Sending WebSocket message:", websocketMessage);
                     conn.send(JSON.stringify(websocketMessage));
 
                     const chatBox = document.getElementById('chat-box');
                     const messageElement = createMessageElement(websocketMessage);
                     chatBox.appendChild(messageElement);
                     chatBox.scrollTop = chatBox.scrollHeight;
+
+                    messageInput.value = '';
+                    imageInput.value = '';
+                    document.getElementById('image-preview').classList.add('hidden');
                 } else {
                     console.error('Error sending message:', data.error);
                 }
