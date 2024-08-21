@@ -43,16 +43,19 @@ class ChatController
         }
 
         try {
-            if ($chatroomId) {
-                $imageUrl = null;
-                $uploadedFiles = $request->getUploadedFiles();
-                if (!empty($uploadedFiles['image'])) {
-                    $uploadedFile = $uploadedFiles['image'];
-                    if ($uploadedFile->getError() === UPLOAD_ERR_OK) {
-                        $filename = $this->moveUploadedFile($uploadedFile);
-                        $imageUrl = '/uploads/' . $filename;
-                    }
+            $pdo->beginTransaction();
+
+            $imageUrl = null;
+            $uploadedFiles = $request->getUploadedFiles();
+            if (!empty($uploadedFiles['image'])) {
+                $uploadedFile = $uploadedFiles['image'];
+                if ($uploadedFile->getError() === UPLOAD_ERR_OK) {
+                    $filename = $this->moveUploadedFile($uploadedFile);
+                    $imageUrl = '/uploads/' . $filename;
                 }
+            }
+
+            if ($chatroomId) {
                 $stmt = $pdo->prepare('INSERT INTO chatroom_messages (chatroom_id, user_id, message, image_url) VALUES (:chatroom_id, :user_id, :message, :image_url)');
                 $stmt->execute([
                     'chatroom_id' => $chatroomId,
@@ -60,21 +63,7 @@ class ChatController
                     'message' => $message,
                     'image_url' => $imageUrl
                 ]);
-
-                $messageId = $pdo->lastInsertId();
-                $data = ['success' => true, 'message_id' => $messageId, 'image_url' => $imageUrl];
-                return $this->jsonResponse($response, $data);
-            }  else {
-                $imageUrl = null;
-                $uploadedFiles = $request->getUploadedFiles();
-                if (!empty($uploadedFiles['image'])) {
-                    $uploadedFile = $uploadedFiles['image'];
-                    if ($uploadedFile->getError() === UPLOAD_ERR_OK) {
-                        $filename = $this->moveUploadedFile($uploadedFile);
-                        $imageUrl = '/uploads/' . $filename;
-                    }
-                }
-
+            } else {
                 $stmt = $pdo->prepare('INSERT INTO messages (sender, recipient, message, image_url) VALUES (:sender, :recipient, :message, :image_url)');
                 $stmt->execute([
                     'sender' => $sender,
@@ -82,14 +71,16 @@ class ChatController
                     'message' => $message,
                     'image_url' => $imageUrl
                 ]);
-
-                $messageId = $pdo->lastInsertId();
-
-                $data = ['success' => true, 'message_id' => $messageId, 'image_url' => $imageUrl];
-                return $this->jsonResponse($response, $data);
             }
+
+            $messageId = $pdo->lastInsertId();
+            $pdo->commit();
+
+            $data = ['success' => true, 'message_id' => $messageId, 'image_url' => $imageUrl];
+            return $this->jsonResponse($response, $data);
         }
         catch (PDOException $e) {
+            $pdo->rollBack();
             $data = ['success' => false, 'error' => $e->getMessage()];
             return $this->jsonResponse($response, $data, 500);
         }
@@ -126,7 +117,7 @@ class ChatController
 
         $messages = $this->repository->fetch(
             'messages m LEFT JOIN message_reactions mr ON m.id = mr.message_id AND mr.user_id = :user_id',
-            ['m.*', 'mr.reaction_type'],
+            ['DISTINCT m.*', 'mr.reaction_type'],
             '(m.sender = :sender AND m.recipient = :recipient) OR (m.sender = :recipient AND m.recipient = :sender)',
             [
                 'sender' => $sender,

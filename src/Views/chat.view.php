@@ -56,14 +56,16 @@ require('parts/navbar.php');
         if (messageData.type === 'reaction') {
             updateReactionDisplay(messageData.message_id, messageData.reaction_type);
         }
-        else if (
-            (messageData.sender === currentUser && messageData.recipient === chatPartner) ||
-            (messageData.sender === chatPartner && messageData.recipient === currentUser)
-        ) {
-            const chatBox = document.getElementById('chat-box');
-            const messageElement = createMessageElement(messageData);
-            chatBox.appendChild(messageElement);
-            chatBox.scrollTop = chatBox.scrollHeight;
+        else if (messageData.type === 'message') {
+            if (
+                (messageData.sender === currentUser && messageData.recipient === chatPartner) ||
+                (messageData.sender === chatPartner && messageData.recipient === currentUser)
+            ) {
+                const chatBox = document.getElementById('chat-box');
+                const messageElement = createMessageElement(messageData);
+                chatBox.appendChild(messageElement);
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
         }
     };
     conn.onerror = function(error) {
@@ -100,15 +102,21 @@ require('parts/navbar.php');
                     messageInput.value = '';
                     imageInput.value = '';
                     document.getElementById('image-preview').classList.add('hidden');
-                    const websocketMessage = JSON.stringify({
+                    const websocketMessage = {
+                        type: 'message',
                         sender: '<?= htmlspecialchars($_SESSION['username']); ?>',
                         recipient: recipient,
                         message: message,
                         image_url: data.image_url,
                         id: data.message_id,
                         timestamp: new Date().toISOString()
-                    });
-                    conn.send(websocketMessage);
+                    };
+                    conn.send(JSON.stringify(websocketMessage));
+
+                    const chatBox = document.getElementById('chat-box');
+                    const messageElement = createMessageElement(websocketMessage);
+                    chatBox.appendChild(messageElement);
+                    chatBox.scrollTop = chatBox.scrollHeight;
                 } else {
                     console.error('Error sending message:', data.error);
                 }
@@ -117,6 +125,24 @@ require('parts/navbar.php');
                 console.error('Error:', error);
             });
     });
+    document.addEventListener('DOMContentLoaded', function() {
+        loadPreviousMessages();
+    });
+    function loadPreviousMessages() {
+        const chatBox = document.getElementById('chat-box');
+        const recipient = document.getElementById('recipient').value;
+
+        fetch(`/get-messages/${recipient}`)
+            .then(response => response.json())
+            .then(messages => {
+                chatBox.innerHTML = '';
+                messages.forEach(message => {
+                    const messageElement = createMessageElement(message);
+                    chatBox.appendChild(messageElement);
+                });
+                chatBox.scrollTop = chatBox.scrollHeight;
+            });
+    }
 
     document.addEventListener('DOMContentLoaded', function() {
         const chatBox = document.getElementById('chat-box');
