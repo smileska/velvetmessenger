@@ -92,11 +92,36 @@ $currentUserId = $_SESSION['user_id'];
     const currentUserId = <?= json_encode($currentUserId); ?>;
     const currentUsername = document.getElementById('current-username').value;
     conn.onopen = function(e) {
-        conn.send(JSON.stringify({
+        console.log("WebSocket connection established");
+        const authMessage = {
             type: 'authentication',
-            username: currentUsername,
-            chatroomId: chatroomId
-        }));
+            username: currentUser
+        };
+        if (typeof chatroomId !== 'undefined') {
+            authMessage.chatroomId = chatroomId;
+        }
+        console.log("Sending authentication message:", authMessage);
+        conn.send(JSON.stringify(authMessage));
+    };
+
+    conn.onmessage = function(e) {
+        console.log("Raw message received:", e.data);
+        try {
+            const messageData = JSON.parse(e.data);
+            console.log("Parsed message data:", messageData);
+
+            if (messageData.type === 'reaction') {
+                updateReactionDisplay(messageData.message_id, messageData.reaction_type);
+            }
+            else if (messageData.type === 'message') {
+                const chatBox = document.getElementById('chat-box');
+                const messageElement = createMessageElement(messageData);
+                chatBox.appendChild(messageElement);
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
+        } catch (error) {
+            console.error("Error processing received message:", error);
+        }
     };
 
     window.addEventListener('load', loadChatroomUsers);
@@ -107,17 +132,6 @@ $currentUserId = $_SESSION['user_id'];
     document.addEventListener('DOMContentLoaded', function() {
         loadSuggestedUsers();
     });
-    conn.onmessage = function(e) {
-        const messageData = JSON.parse(e.data);
-        if (messageData.type === 'reaction') {
-            updateReactionDisplay(messageData.message_id, messageData.reaction_type);
-        } else if (messageData.type === 'message' && messageData.chatroom_id === chatroomId) {
-            const chatBox = document.getElementById('chat-box');
-            const messageElement = createMessageElement(messageData);
-            chatBox.appendChild(messageElement);
-            chatBox.scrollTop = chatBox.scrollHeight;
-        }
-    };
 
     conn.onerror = function(error) {
     };
@@ -152,28 +166,27 @@ $currentUserId = $_SESSION['user_id'];
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    const messageData = {
+                    const websocketMessage = {
                         type: 'message',
+                        sender: currentUser,
                         chatroom_id: chatroomId,
-                        sender_id: document.getElementById('current-user-id').value,
-                        user_id: document.getElementById('current-user-id').value,
-                        username: document.getElementById('current-username').value,
                         message: message,
                         image_url: data.image_url,
                         id: data.message_id,
                         timestamp: new Date().toISOString()
                     };
-                    conn.send(JSON.stringify(messageData));
+
+                    console.log("Sending WebSocket message:", websocketMessage);
+                    conn.send(JSON.stringify(websocketMessage));
 
                     const chatBox = document.getElementById('chat-box');
-                    const messageElement = createMessageElement(messageData);
+                    const messageElement = createMessageElement(websocketMessage);
                     chatBox.appendChild(messageElement);
                     chatBox.scrollTop = chatBox.scrollHeight;
 
                     messageInput.value = '';
                     imageInput.value = '';
                     document.getElementById('image-preview').classList.add('hidden');
-                    document.getElementById('preview-image').src = '';
                 } else {
                     console.error('Error sending message:', data.error);
                 }
@@ -182,8 +195,6 @@ $currentUserId = $_SESSION['user_id'];
                 console.error('Error:', error);
             });
     });
-
-
 
     document.getElementById('add-user-form').addEventListener('submit', function(event) {
         event.preventDefault();
