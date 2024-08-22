@@ -454,3 +454,64 @@ body.dark-mode label{
 .hidden {
     display: none;
 }
+.notification-bell {
+    transition: transform 0.3s ease;
+}
+
+.notification-bell:hover {
+    transform: scale(1.15);
+}
+
+.notification-bell svg {
+    transition: stroke-width 0.3s ease;
+}
+
+.notification-bell:hover svg {
+    stroke-width: 2;
+}
+
+#notificationCount {
+    transition: transform 0.3s ease;
+}
+
+.notification-bell:hover #notificationCount {
+    transform: scale(1.2) translate(50%, -50%);
+}
+.notification-bell {
+    position: relative;
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.3s ease;
+}
+
+.notification-bell:hover {
+    transform: scale(1.15);
+}
+
+.notification-bell svg {
+    width: 100%;
+    height: 100%;
+    stroke: white;
+    stroke-width: 1.5;
+    transition: stroke-width 0.3s ease;
+}
+
+.notification-bell:hover svg {
+    stroke-width: 2;
+}
+
+.notification-count {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background-color: #EF4444;
+    color: white;
+    border-radius: 50%;
+    padding: 2px 5px;
+    font-size: 0.75rem;
+    font-weight: bold;
+}
