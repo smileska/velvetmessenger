@@ -91,15 +91,14 @@ $currentUserId = $_SESSION['user_id'];
     var chatroomId = <?= json_encode($chatroomId) ?>;
     const currentUserId = <?= json_encode($currentUserId); ?>;
     const currentUsername = document.getElementById('current-username').value;
+
     conn.onopen = function(e) {
         console.log("WebSocket connection established");
         const authMessage = {
             type: 'authentication',
-            username: currentUser
+            username: currentUsername,
+            chatroomId: chatroomId
         };
-        if (typeof chatroomId !== 'undefined') {
-            authMessage.chatroomId = chatroomId;
-        }
         console.log("Sending authentication message:", authMessage);
         conn.send(JSON.stringify(authMessage));
     };
@@ -114,10 +113,13 @@ $currentUserId = $_SESSION['user_id'];
                 updateReactionDisplay(messageData.message_id, messageData.reaction_type);
             }
             else if (messageData.type === 'message') {
-                const chatBox = document.getElementById('chat-box');
-                const messageElement = createMessageElement(messageData);
-                chatBox.appendChild(messageElement);
-                chatBox.scrollTop = chatBox.scrollHeight;
+                const existingMessage = document.querySelector(`[data-message-id="${messageData.id}"]`);
+                if (!existingMessage) {
+                    const chatBox = document.getElementById('chat-box');
+                    const messageElement = createMessageElement(messageData);
+                    chatBox.appendChild(messageElement);
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                }
             }
         } catch (error) {
             console.error("Error processing received message:", error);
@@ -145,15 +147,17 @@ $currentUserId = $_SESSION['user_id'];
     document.getElementById('chat-form').addEventListener('submit', function(event) {
         event.preventDefault();
         const messageInput = document.getElementById('message');
-        const message = messageInput.value;
+        const message = messageInput.value.trim();
         const imageInput = document.getElementById('image-upload');
+
+        if (message === '' && imageInput.files.length === 0) return;
 
         const formData = new FormData();
         formData.append('chatroom_id', chatroomId);
         formData.append('message', message);
         formData.append('sender_id', document.getElementById('current-user-id').value);
         formData.append('user_id', document.getElementById('current-user-id').value);
-        formData.append('username', document.getElementById('current-username').value);
+        formData.append('username', currentUsername);
 
         if (imageInput.files.length > 0) {
             formData.append('image', imageInput.files[0]);
@@ -166,34 +170,33 @@ $currentUserId = $_SESSION['user_id'];
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    const websocketMessage = {
+                    console.log("Message saved to database:", data);
+                    const messageData = {
                         type: 'message',
-                        sender: currentUser,
+                        id: data.message_id,
+                        sender: currentUsername,
                         chatroom_id: chatroomId,
                         message: message,
                         image_url: data.image_url,
-                        id: data.message_id,
                         timestamp: new Date().toISOString()
                     };
-
-                    console.log("Sending WebSocket message:", websocketMessage);
-                    conn.send(JSON.stringify(websocketMessage));
+                    conn.send(JSON.stringify(messageData));
 
                     const chatBox = document.getElementById('chat-box');
-                    const messageElement = createMessageElement(websocketMessage);
+                    const messageElement = createMessageElement(messageData);
                     chatBox.appendChild(messageElement);
                     chatBox.scrollTop = chatBox.scrollHeight;
-
-                    messageInput.value = '';
-                    imageInput.value = '';
-                    document.getElementById('image-preview').classList.add('hidden');
                 } else {
-                    console.error('Error sending message:', data.error);
+                    console.error('Error saving message to database:', data.error);
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
             });
+
+        messageInput.value = '';
+        imageInput.value = '';
+        document.getElementById('image-preview').classList.add('hidden');
     });
 
     document.getElementById('add-user-form').addEventListener('submit', function(event) {
@@ -431,25 +434,21 @@ $currentUserId = $_SESSION['user_id'];
         } else {
             messageElement.classList.add('p-2', 'mb-2', 'rounded-lg', 'flex', 'justify-between', 'items-start');
         }
-        messageElement.dataset.messageId = messageData.id;
+        messageElement.dataset.messageId = messageData.id || `temp-${messageData.timestamp}`;
         messageElement.dataset.reaction = messageData.reaction || '';
 
         const textElement = document.createElement('span');
-        if (hasImage) {
-            textElement.classList.add('mb-2');
-        } else {
-            textElement.classList.add('mr-2');
-        }
+        textElement.classList.add('mb-2');
 
-        const senderId = parseInt(messageData.user_id || messageData.sender_id);
-        const currentUserId = parseInt(document.getElementById('current-user-id').value);
+        const sender = messageData.username || messageData.sender;
+        const isCurrentUser = sender === currentUsername;
 
-        if (senderId === currentUserId) {
+        if (isCurrentUser) {
             messageElement.classList.add('bg-blue-100', 'self-end');
             textElement.textContent = `You: ${messageData.message}`;
         } else {
             messageElement.classList.add('bg-gray-100', 'self-start');
-            textElement.textContent = `${messageData.username}: ${messageData.message}`;
+            textElement.textContent = `${sender}: ${messageData.message}`;
         }
 
         messageElement.appendChild(textElement);
@@ -461,7 +460,7 @@ $currentUserId = $_SESSION['user_id'];
             messageElement.appendChild(imageElement);
         }
 
-        const reactionContainer = createReactionContainer(messageData.id, true, messageData.reaction_type);
+        const reactionContainer = createReactionContainer(messageElement.dataset.messageId, true, messageData.reaction_type);
         const reactionPopup = reactionContainer.querySelector('.reaction-popup');
         if (messageElement.classList.contains('bg-blue-100')) {
             reactionPopup.classList.add('bg-blue-100');

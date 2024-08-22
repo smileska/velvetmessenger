@@ -46,6 +46,7 @@ require('parts/navbar.php');
     var conn = new WebSocket('ws://localhost:8080');
     const currentUser = '<?= htmlspecialchars($_SESSION['username']); ?>';
     const chatPartner = '<?= htmlspecialchars($chatUser['username']); ?>';
+
     conn.onopen = function(e) {
         console.log("WebSocket connection established");
         const authMessage = {
@@ -69,16 +70,19 @@ require('parts/navbar.php');
                 updateReactionDisplay(messageData.message_id, messageData.reaction_type);
             }
             else if (messageData.type === 'message') {
-                const chatBox = document.getElementById('chat-box');
-                const messageElement = createMessageElement(messageData);
-                chatBox.appendChild(messageElement);
-                chatBox.scrollTop = chatBox.scrollHeight;
+                if (messageData.sender === currentUser || messageData.sender === chatPartner || messageData.recipient === chatPartner) {
+                    const existingMessage = document.querySelector(`[data-message-id="${messageData.id}"]`);
+                    if (!existingMessage) {
+                        const chatBox = document.getElementById('chat-box');
+                        const messageElement = createMessageElement(messageData);
+                        chatBox.appendChild(messageElement);
+                        chatBox.scrollTop = chatBox.scrollHeight;
+                    }
+                }
             }
         } catch (error) {
             console.error("Error processing received message:", error);
         }
-    };
-    conn.onerror = function(error) {
     };
 
     conn.onclose = function(e) {
@@ -200,7 +204,7 @@ require('parts/navbar.php');
             textElement.classList.add('mr-2');
         }
 
-        if (messageData.sender === '<?= htmlspecialchars($_SESSION['username']); ?>') {
+        if (messageData.sender === currentUser) {
             messageElement.classList.add('bg-blue-100', 'self-end');
             textElement.textContent = `You: ${messageData.message}`;
         } else {
@@ -228,6 +232,7 @@ require('parts/navbar.php');
 
         return messageElement;
     }
+
     function createReactionContainer(messageId, isPrivateChat, initialReaction = null) {
         const reactionContainer = document.createElement('div');
         reactionContainer.classList.add('reaction-container', 'flex', 'items-center', 'relative', 'ml-auto', 'rounded-lg');
