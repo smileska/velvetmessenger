@@ -58,38 +58,10 @@
     let unreadCount = 0;
     const currentUsername = '<?= isset($_SESSION['username']) ? htmlspecialchars($_SESSION['username']) : ''; ?>';
 
-    function updateNotificationCount() {
-        const countElement = document.getElementById('notificationCount');
-        if (countElement) {
-            if (unreadCount > 0) {
-                countElement.textContent = unreadCount;
-                countElement.classList.remove('hidden');
-            } else {
-                countElement.classList.add('hidden');
-            }
-        }
-    }
-
-    function addNotification(message) {
-        const list = document.getElementById('notificationList');
-        if (list) {
-            if (list.firstChild.textContent === 'No new notifications') {
-                list.innerHTML = '';
-            }
-            const notificationElement = document.createElement('div');
-            notificationElement.classList.add('px-4', 'py-2', 'text-sm', 'text-gray-700', 'hover:bg-gray-100');
-            notificationElement.textContent = message;
-            list.insertBefore(notificationElement, list.firstChild);
-
-            if (list.children.length > 5) {
-                list.removeChild(list.lastChild);
-            }
-        }
-        unreadCount++;
-        updateNotificationCount();
-    }
-
     document.addEventListener('DOMContentLoaded', function() {
+        setupNotifications();
+    });
+    function setupNotifications() {
         const bell = document.getElementById('notificationBell');
         const dropdown = document.getElementById('notificationDropdown');
 
@@ -119,22 +91,56 @@
 
         conn.onopen = function(e) {
             console.log("Connection established!");
+            conn.send(JSON.stringify({
+                type: 'authentication',
+                username: currentUsername
+            }));
         };
 
         conn.onmessage = function(e) {
+            console.log("Received message:", e.data);
             const messageData = JSON.parse(e.data);
-            console.log("Received message:", messageData);
 
-            if (messageData.type === 'reaction') {
-            } else if (messageData.recipient === currentUsername) {
-                addNotification(`New message from ${messageData.sender}`);
-                const chatBox = document.getElementById('chat-box');
-                if (chatBox) {
-                    const messageElement = createMessageElement(messageData);
-                    chatBox.appendChild(messageElement);
-                    chatBox.scrollTop = chatBox.scrollHeight;
-                }
+            if (messageData.type === 'notification') {
+                addNotification(messageData.content);
+            } else if (messageData.type === 'message' && messageData.recipient === currentUsername) {
+            } else if (messageData.type === 'reaction' && messageData.recipientUsername === currentUsername) {
+                addNotification(`${messageData.senderUsername} reacted to your message`);
             }
         };
-    });
+    }
+
+    function updateNotificationCount() {
+        const countElement = document.getElementById('notificationCount');
+        if (countElement) {
+            if (unreadCount > 0) {
+                countElement.textContent = unreadCount;
+                countElement.classList.remove('hidden');
+            } else {
+                countElement.classList.add('hidden');
+            }
+        }
+    }
+
+    function addNotification(message) {
+        const list = document.getElementById('notificationList');
+        if (list) {
+            const noNotificationsElement = list.querySelector('.no-notifications');
+            if (noNotificationsElement) {
+                list.removeChild(noNotificationsElement);
+            }
+
+            const notificationElement = document.createElement('div');
+            notificationElement.classList.add('px-4', 'py-2', 'text-sm', 'text-gray-700', 'hover:bg-gray-100');
+            notificationElement.textContent = message;
+            list.insertBefore(notificationElement, list.firstChild);
+
+            if (list.children.length > 5) {
+                list.removeChild(list.lastChild);
+            }
+        }
+        unreadCount++;
+        updateNotificationCount();
+    }
+
 </script>
