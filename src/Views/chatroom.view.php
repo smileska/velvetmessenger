@@ -169,37 +169,7 @@ $currentUserId = $_SESSION['user_id'];
             message: message,
             timestamp: new Date().toISOString()
         };
-        conn.send(JSON.stringify(messageData)); // preku websocket direktno da probam da pushtam da ne pram fetch
-        // fetch('/send-message', {
-        //     method: 'POST',
-        //     body: formData
-        // })
-        //     .then(response => response.json())
-        //     .then(data => {
-        //         if (data.success) {
-        //             console.log("Message saved to database:", data);
-        //             const messageData = {
-        //                 type: 'message',
-        //                 id: data.message_id,
-        //                 sender: currentUsername,
-        //                 chatroom_id: chatroomId,
-        //                 message: message,
-        //                 image_url: data.image_url,
-        //                 timestamp: new Date().toISOString()
-        //             };
-        //             conn.send(JSON.stringify(messageData));
-        //
-        //             const chatBox = document.getElementById('chat-box');
-        //             const messageElement = createMessageElement(messageData);
-        //             chatBox.appendChild(messageElement);
-        //             chatBox.scrollTop = chatBox.scrollHeight;
-        //         } else {
-        //             console.error('Error saving message to database:', data.error);
-        //         }
-        //     })
-        //     .catch(error => {
-        //         console.error('Error:', error);
-        //     });
+        conn.send(JSON.stringify(messageData));
 
         messageInput.value = '';
         imageInput.value = '';
