@@ -121,4 +121,5 @@ return function (App $app) {
     $app->get('/chat/{username}', function (Request $request, Response $response, $args) use ($container) {
         return $container->get(ChatController::class)->showChat($request, $response, $args);
     });
+    $app->post('/upload-image', ChatController::class . ':uploadImage');
 };
