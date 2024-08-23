@@ -314,5 +314,24 @@ class ChatController
 
         return $tempReencodedFilePath;
     }
+    public function uploadImage(Request $request, Response $response): Response
+    {
+        $uploadedFiles = $request->getUploadedFiles();
+        $chatroomId = $request->getParsedBody()['chatroom_id'] ?? null;
+
+        if (empty($uploadedFiles['image'])) {
+            return $this->jsonResponse($response, ['success' => false, 'error' => 'No image uploaded'], 400);
+        }
+
+        $image = $uploadedFiles['image'];
+        if ($image->getError() !== UPLOAD_ERR_OK) {
+            return $this->jsonResponse($response, ['success' => false, 'error' => 'Upload failed'], 500);
+        }
+
+        $filename = $this->moveUploadedFile($image);
+        $imageUrl = '/uploads/' . $filename;
+
+        return $this->jsonResponse($response, ['success' => true, 'image_url' => $imageUrl]);
+    }
 
 }
