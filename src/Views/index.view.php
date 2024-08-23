@@ -24,13 +24,13 @@
 
         <!-- Existing search functionality -->
         <?php if (isset($_SESSION['username'])): ?>
-        <div class="mt-8">
-            <h2 class="moving-2 text-2xl font-bold mb-4">Search Users</h2>
-            <form action="/search" method="post" class="flex items-center">
-                <input type="text" name="search_user" placeholder="Search for users" required class="flex-grow p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <button type="submit" class="btn-primary ml-3 px-4 py-2 bg-blue-500 text-white rounded-lg shadow hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">Search</button>
-            </form>
-        </div>
+            <div class="mt-8">
+                <h2 class="moving-2 text-2xl font-bold mb-4">Search Users</h2>
+                <form action="/search" method="post" class="flex items-center">
+                    <input type="text" name="search_user" placeholder="Search for users" required class="flex-grow p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <button type="submit" class="btn-primary ml-3 px-4 py-2 bg-blue-500 text-white rounded-lg shadow hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">Search</button>
+                </form>
+            </div>
         <?php else: ?>
             <div class="mt-8">
                 <p>Log in or sign up to start talking!</p>
