@@ -144,31 +144,48 @@ $currentUserId = $_SESSION['user_id'];
         }, 1000);
     };
 
-    document.getElementById('chat-form').addEventListener('submit', function(event) {
+    document.getElementById('chat-form').addEventListener('submit', async function(event) {
         event.preventDefault();
         const messageInput = document.getElementById('message');
         const message = messageInput.value.trim();
         const imageInput = document.getElementById('image-upload');
+        const chatroomId = document.getElementById('chatroom_id').value;
 
         if (message === '' && imageInput.files.length === 0) return;
 
-        const formData = new FormData();
-        formData.append('chatroom_id', chatroomId);
-        formData.append('message', message);
-        formData.append('sender_id', document.getElementById('current-user-id').value);
-        formData.append('user_id', document.getElementById('current-user-id').value);
-        formData.append('username', currentUsername);
-
+        let imageUrl = null;
         if (imageInput.files.length > 0) {
+            const formData = new FormData();
             formData.append('image', imageInput.files[0]);
+            formData.append('chatroom_id', chatroomId);
+
+            try {
+                const response = await fetch('/upload-image', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+                if (result.success) {
+                    imageUrl = result.image_url;
+                } else {
+                    console.error('Error uploading image:', result.error);
+                    return;
+                }
+            } catch (error) {
+                console.error('Error uploading image:', error);
+                return;
+            }
         }
+
         const messageData = {
             type: 'message',
             chatroom_id: chatroomId,
             sender: currentUsername,
             message: message,
+            image_url: imageUrl,
             timestamp: new Date().toISOString()
         };
+
         conn.send(JSON.stringify(messageData));
 
         messageInput.value = '';
