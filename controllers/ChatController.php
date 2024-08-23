@@ -117,7 +117,7 @@ class ChatController
 
         $messages = $this->repository->fetch(
             'messages m LEFT JOIN message_reactions mr ON m.id = mr.message_id AND mr.user_id = :user_id',
-            ['DISTINCT m.*', 'mr.reaction_type'],
+            ['m.*', 'mr.reaction_type'],
             '(m.sender = :sender AND m.recipient = :recipient) OR (m.sender = :recipient AND m.recipient = :sender)',
             [
                 'sender' => $sender,
@@ -125,6 +125,9 @@ class ChatController
                 'user_id' => $_SESSION['user_id']
             ]
         );
+        usort($messages, function($a, $b) {
+            return strtotime($a['timestamp']) - strtotime($b['timestamp']);
+        });
 
         $response->getBody()->write(json_encode($messages));
         return $response->withHeader('Content-Type', 'application/json');

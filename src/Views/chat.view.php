@@ -142,6 +142,7 @@ require('parts/navbar.php');
                 console.error('Error:', error);
             });
     });
+
     document.addEventListener('DOMContentLoaded', function() {
         loadPreviousMessages();
     });
@@ -158,7 +159,8 @@ require('parts/navbar.php');
                     chatBox.appendChild(messageElement);
                 });
                 chatBox.scrollTop = chatBox.scrollHeight;
-            });
+            })
+            .catch(error => console.error('Error loading previous messages:', error));
     }
 
     document.addEventListener('DOMContentLoaded', function() {
