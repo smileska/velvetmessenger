@@ -9,6 +9,7 @@ use Psr\Http\Message\ServerRequestInterface as Request;
 use PDO;
 use App\SpeechToText;
 use Repositories\Repository;
+use WebSocket\BadOpcodeException;
 
 class ChatController
 {
@@ -38,8 +39,7 @@ class ChatController
             foreach ($violations as $violation) {
                 $errors[] = $violation->getMessage();
             }
-            $response->getBody()->write(json_encode(['errors' => $errors]));
-            return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
+            return $this->jsonResponse($response, ['errors' => $errors], 400);
         }
 
         try {
@@ -76,14 +76,31 @@ class ChatController
             $messageId = $pdo->lastInsertId();
             $pdo->commit();
 
-            $data = ['success' => true, 'message_id' => $messageId, 'image_url' => $imageUrl];
+            $data = [
+                'success' => true,
+                'id' => $messageId,
+                'sender' => $sender,
+                'recipient' => $recipient,
+                'message' => $message,
+                'image_url' => $imageUrl,
+                'timestamp' => date('Y-m-d H:i:s')
+            ];
             return $this->jsonResponse($response, $data);
         }
         catch (PDOException $e) {
             $pdo->rollBack();
-            $data = ['success' => false, 'error' => $e->getMessage()];
-            return $this->jsonResponse($response, $data, 500);
+            return $this->jsonResponse($response, ['success' => false, 'error' => $e->getMessage()], 500);
         }
+    }
+
+    /**
+     * @throws BadOpcodeException
+     */
+    private function sendWebSocketMessage($data)
+    {
+        $conn = new \WebSocket\Client("ws://localhost:8080");
+        $conn->send(json_encode($data));
+        $conn->close();
     }
 
     private function moveUploadedFile($uploadedFile)
