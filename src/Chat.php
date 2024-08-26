@@ -52,21 +52,11 @@ class Chat implements MessageComponentInterface {
         echo "User {$username} authenticated (Connection {$conn->resourceId})\n";
     }
     public function onMessage(ConnectionInterface $from, $msg) {
-        echo "Raw message received from connection {$from->resourceId}: " . $msg . "\n";
-
         $data = json_decode($msg, true);
 
-        if (!$data) {
-            echo "Failed to parse JSON for connection {$from->resourceId}. Error: " . json_last_error_msg() . "\n";
-            return;
-        }
-
         if (!isset($data['type'])) {
-            echo "Message type not set for connection {$from->resourceId}. Full message: " . $msg . "\n";
             return;
         }
-
-        echo "Received message of type: {$data['type']} from connection {$from->resourceId}\n";
 
         switch ($data['type']) {
             case 'authentication':
@@ -78,10 +68,9 @@ class Chat implements MessageComponentInterface {
             case 'reaction':
                 $this->handleReaction($data);
                 break;
-            default:
-                echo "Unknown message type received: {$data['type']} from connection {$from->resourceId}\n";
         }
     }
+
     private function handleMessage(ConnectionInterface $from, $data) {
         if (isset($data['chatroom_id'])) {
             $this->handleChatroomMessage($from, $data);
@@ -164,42 +153,42 @@ class Chat implements MessageComponentInterface {
     private function handlePrivateMessage(ConnectionInterface $from, $data) {
         $sender = $data['sender'];
         $recipient = $data['recipient'];
-        echo "Handling private message from {$sender} to {$recipient}\n";
 
-        $stmt = $this->pdo->prepare('INSERT INTO messages (sender, recipient, message) VALUES (:sender, :recipient, :message)');
+        echo "Handling private message from $sender to $recipient\n";
+
+        $stmt = $this->pdo->prepare('INSERT INTO messages (sender, recipient, message, image_url) VALUES (:sender, :recipient, :message, :image_url)');
         $stmt->execute([
             'sender' => $sender,
             'recipient' => $recipient,
-            'message' => $data['message']
+            'message' => $data['message'],
+            'image_url' => $data['image_url'] ?? null
         ]);
         $messageId = $this->pdo->lastInsertId();
 
-        $data['id'] = $messageId;
-
+        $messageToSend = json_encode([
+            'type' => 'message',
+            'id' => $messageId,
+            'sender' => $sender,
+            'recipient' => $recipient,
+            'message' => $data['message'],
+            'image_url' => $data['image_url'] ?? null,
+            'timestamp' => date('Y-m-d H:i:s')
+        ]);
         if (isset($this->userConnections[$recipient])) {
-            $this->userConnections[$recipient]->send(json_encode($data));
-            echo "Sent private message to {$recipient}\n";
-
-            $notification = [
-                'type' => 'notification',
-                'content' => "New message from {$sender}"
-            ];
-            $this->userConnections[$recipient]->send(json_encode($notification));
+            echo "Sending message to recipient $recipient\n";
+            $this->userConnections[$recipient]->send($messageToSend);
         } else {
-            echo "Error: Recipient {$recipient} not found in connections\n";
+            echo "Recipient $recipient not found in connections\n";
             if (!isset($this->notifications[$recipient])) {
                 $this->notifications[$recipient] = [];
             }
-            $this->notifications[$recipient][] = [
-                'type' => 'notification',
-                'content' => "New message from {$sender}"
-            ];
+            $this->notifications[$recipient][] = json_decode($messageToSend, true);
         }
 
-        if (isset($this->userConnections[$sender])) {
-            $this->userConnections[$sender]->send(json_encode($data));
-        }
+        echo "Sending confirmation to sender $sender\n";
+        $from->send($messageToSend);
     }
+
 
     public function onClose(ConnectionInterface $conn) {
         $this->clients->detach($conn);

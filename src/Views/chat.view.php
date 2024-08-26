@@ -53,9 +53,6 @@ require('parts/navbar.php');
             type: 'authentication',
             username: currentUser
         };
-        if (typeof chatroomId !== 'undefined') {
-            authMessage.chatroomId = chatroomId;
-        }
         console.log("Sending authentication message:", authMessage);
         conn.send(JSON.stringify(authMessage));
     };
@@ -70,20 +67,40 @@ require('parts/navbar.php');
                 updateReactionDisplay(messageData.message_id, messageData.reaction_type);
             }
             else if (messageData.type === 'message') {
-                if (messageData.sender === currentUser || messageData.sender === chatPartner || messageData.recipient === chatPartner) {
-                    const existingMessage = document.querySelector(`[data-message-id="${messageData.id}"]`);
-                    if (!existingMessage) {
-                        const chatBox = document.getElementById('chat-box');
-                        const messageElement = createMessageElement(messageData);
-                        chatBox.appendChild(messageElement);
-                        chatBox.scrollTop = chatBox.scrollHeight;
-                    }
+                if ((messageData.sender === currentUser && messageData.recipient === chatPartner) ||
+                    (messageData.sender === chatPartner && messageData.recipient === currentUser)) {
+                    displayNewMessage(messageData);
                 }
             }
         } catch (error) {
             console.error("Error processing received message:", error);
         }
     };
+
+
+    function displayNewMessage(messageData) {
+        console.log("Displaying new message:", messageData);
+        const chatBox = document.getElementById('chat-box');
+        const messageElement = createMessageElement(messageData);
+        chatBox.appendChild(messageElement);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function updateOrAddMessageToChat(messageData) {
+        const existingMessage = document.querySelector(`[data-message-id="${messageData.id}"]`);
+        if (existingMessage) {
+            console.log("Updating existing message:", messageData.id);
+        } else {
+            addMessageToChat(messageData);
+        }
+    }
+
+    function addMessageToChat(messageData) {
+        const chatBox = document.getElementById('chat-box');
+        const messageElement = createMessageElement(messageData);
+        chatBox.appendChild(messageElement);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
 
     conn.onclose = function(e) {
         setTimeout(function() {
@@ -113,24 +130,16 @@ require('parts/navbar.php');
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    const websocketMessage = {
+                    console.log("Message sent successfully:", data);
+                    displayNewMessage({
                         type: 'message',
+                        id: data.id,
                         sender: currentUser,
                         recipient: recipient,
                         message: message,
                         image_url: data.image_url,
-                        id: data.message_id,
-                        timestamp: new Date().toISOString()
-                    };
-
-                    console.log("Sending WebSocket message:", websocketMessage);
-                    conn.send(JSON.stringify(websocketMessage));
-
-                    const chatBox = document.getElementById('chat-box');
-                    const messageElement = createMessageElement(websocketMessage);
-                    chatBox.appendChild(messageElement);
-                    chatBox.scrollTop = chatBox.scrollHeight;
-
+                        timestamp: data.timestamp
+                    });
                     messageInput.value = '';
                     imageInput.value = '';
                     document.getElementById('image-preview').classList.add('hidden');
@@ -142,23 +151,33 @@ require('parts/navbar.php');
                 console.error('Error:', error);
             });
     });
+    document.addEventListener('DOMContentLoaded', function() {
+        conn.onopen = function(e) {
+            console.log("WebSocket connection established");
+            const authMessage = {
+                type: 'authentication',
+                username: currentUser
+            };
+            console.log("Sending authentication message:", authMessage);
+            conn.send(JSON.stringify(authMessage));
+        };
+
+        loadPreviousMessages();
+    });
 
     document.addEventListener('DOMContentLoaded', function() {
         loadPreviousMessages();
     });
     function loadPreviousMessages() {
-        const chatBox = document.getElementById('chat-box');
         const recipient = document.getElementById('recipient').value;
-
         fetch(`/get-messages/${recipient}`)
             .then(response => response.json())
             .then(messages => {
+                const chatBox = document.getElementById('chat-box');
                 chatBox.innerHTML = '';
                 messages.forEach(message => {
-                    const messageElement = createMessageElement(message);
-                    chatBox.appendChild(messageElement);
+                    displayNewMessage(message);
                 });
-                chatBox.scrollTop = chatBox.scrollHeight;
             })
             .catch(error => console.error('Error loading previous messages:', error));
     }
@@ -190,23 +209,23 @@ require('parts/navbar.php');
     function createMessageElement(messageData) {
         const messageElement = document.createElement('div');
         const hasImage = !!messageData.image_url;
+        messageElement.classList.add('p-2', 'mb-2', 'rounded-lg', 'flex', 'items-start');
+
         if (hasImage) {
-            messageElement.classList.add('p-2', 'mb-2', 'rounded-lg', 'flex', 'flex-col', 'items-start');
+            messageElement.classList.add('flex-col');
         } else {
-            messageElement.classList.add('p-2', 'mb-2', 'rounded-lg', 'flex', 'justify-between', 'items-start');
+            messageElement.classList.add('justify-between');
         }
 
         messageElement.dataset.messageId = messageData.id;
         messageElement.dataset.reaction = messageData.reaction || '';
 
         const textElement = document.createElement('span');
-        if (hasImage) {
-            textElement.classList.add('mb-2');
-        } else {
-            textElement.classList.add('mr-2');
-        }
+        textElement.classList.add(hasImage ? 'mb-2' : 'mr-2');
 
-        if (messageData.sender === currentUser) {
+        const isCurrentUser = messageData.sender === currentUser;
+
+        if (isCurrentUser) {
             messageElement.classList.add('bg-blue-100', 'self-end');
             textElement.textContent = `You: ${messageData.message}`;
         } else {
@@ -224,17 +243,13 @@ require('parts/navbar.php');
         }
 
         const reactionContainer = createReactionContainer(messageData.id, true, messageData.reaction_type);
-        const reactionPopup = reactionContainer.querySelector('.reaction-popup');
-        if (messageElement.classList.contains('bg-blue-100')) {
-            reactionPopup.classList.add('bg-blue-100');
-        } else {
-            reactionPopup.classList.add('bg-gray-100');
-        }
         messageElement.appendChild(reactionContainer);
 
         return messageElement;
     }
-
+    document.addEventListener('DOMContentLoaded', function() {
+        loadPreviousMessages();
+    });
     function createReactionContainer(messageId, isPrivateChat, initialReaction = null) {
         const reactionContainer = document.createElement('div');
         reactionContainer.classList.add('reaction-container', 'flex', 'items-center', 'relative', 'ml-auto', 'rounded-lg');
