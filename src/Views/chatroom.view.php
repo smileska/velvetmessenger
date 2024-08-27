@@ -780,90 +780,90 @@ $currentUserId = $_SESSION['user_id'];
         document.getElementById('preview-image').src = '';
         document.getElementById('image-preview').classList.add('hidden');
     });
-    let unreadCount = 0;
-
-    document.addEventListener('DOMContentLoaded', function() {
-        setupNotifications();
-    });
-    function setupNotifications() {
-        const bell = document.getElementById('notificationBell');
-        const dropdown = document.getElementById('notificationDropdown');
-
-        if (bell && dropdown) {
-            bell.addEventListener('click', function(event) {
-                event.preventDefault();
-                event.stopPropagation();
-                console.log('Notification bell clicked');
-
-                dropdown.classList.toggle('hidden');
-                if (!dropdown.classList.contains('hidden')) {
-                    unreadCount = 0;
-                    updateNotificationCount();
-                }
-            });
-
-            document.addEventListener('click', function(event) {
-                if (!bell.contains(event.target) && !dropdown.contains(event.target)) {
-                    dropdown.classList.add('hidden');
-                }
-            });
-        }
-
-        updateNotificationCount();
-
-        var conn = new WebSocket('ws://localhost:8080');
-
-        conn.onopen = function(e) {
-            console.log("Connection established!");
-            conn.send(JSON.stringify({
-                type: 'authentication',
-                username: currentUsername
-            }));
-        };
-
-        conn.onmessage = function(e) {
-            console.log("Received message:", e.data);
-            const messageData = JSON.parse(e.data);
-
-            if (messageData.type === 'notification') {
-                addNotification(messageData.content);
-            } else if (messageData.type === 'message' && messageData.recipient === currentUsername) {
-            } else if (messageData.type === 'reaction' && messageData.recipientUsername === currentUsername) {
-                addNotification(`${messageData.senderUsername} reacted to your message`);
-            }
-        };
-    }
-
-    function updateNotificationCount() {
-        const countElement = document.getElementById('notificationCount');
-        if (countElement) {
-            if (unreadCount > 0) {
-                countElement.textContent = unreadCount;
-                countElement.classList.remove('hidden');
-            } else {
-                countElement.classList.add('hidden');
-            }
-        }
-    }
-
-    function addNotification(message) {
-        const list = document.getElementById('notificationList');
-        if (list) {
-            const noNotificationsElement = list.querySelector('.no-notifications');
-            if (noNotificationsElement) {
-                list.removeChild(noNotificationsElement);
-            }
-
-            const notificationElement = document.createElement('div');
-            notificationElement.classList.add('px-4', 'py-2', 'text-sm', 'text-gray-700', 'hover:bg-gray-100');
-            notificationElement.textContent = message;
-            list.insertBefore(notificationElement, list.firstChild);
-
-            if (list.children.length > 5) {
-                list.removeChild(list.lastChild);
-            }
-        }
-        unreadCount++;
-        updateNotificationCount();
-    }
+    // let unreadCount = 0;
+    //
+    // document.addEventListener('DOMContentLoaded', function() {
+    //     setupNotifications();
+    // });
+    // function setupNotifications() {
+    //     const bell = document.getElementById('notificationBell');
+    //     const dropdown = document.getElementById('notificationDropdown');
+    //
+    //     if (bell && dropdown) {
+    //         bell.addEventListener('click', function(event) {
+    //             event.preventDefault();
+    //             event.stopPropagation();
+    //             console.log('Notification bell clicked');
+    //
+    //             dropdown.classList.toggle('hidden');
+    //             if (!dropdown.classList.contains('hidden')) {
+    //                 unreadCount = 0;
+    //                 updateNotificationCount();
+    //             }
+    //         });
+    //
+    //         document.addEventListener('click', function(event) {
+    //             if (!bell.contains(event.target) && !dropdown.contains(event.target)) {
+    //                 dropdown.classList.add('hidden');
+    //             }
+    //         });
+    //     }
+    //
+    //     updateNotificationCount();
+    //
+    //     var conn = new WebSocket('ws://localhost:8080');
+    //
+    //     conn.onopen = function(e) {
+    //         console.log("Connection established!");
+    //         conn.send(JSON.stringify({
+    //             type: 'authentication',
+    //             username: currentUsername
+    //         }));
+    //     };
+    //
+    //     conn.onmessage = function(e) {
+    //         console.log("Received message:", e.data);
+    //         const messageData = JSON.parse(e.data);
+    //
+    //         if (messageData.type === 'notification') {
+    //             addNotification(messageData.content);
+    //         } else if (messageData.type === 'message' && messageData.recipient === currentUsername) {
+    //         } else if (messageData.type === 'reaction' && messageData.recipientUsername === currentUsername) {
+    //             addNotification(`${messageData.senderUsername} reacted to your message`);
+    //         }
+    //     };
+    // }
+    //
+    // function updateNotificationCount() {
+    //     const countElement = document.getElementById('notificationCount');
+    //     if (countElement) {
+    //         if (unreadCount > 0) {
+    //             countElement.textContent = unreadCount;
+    //             countElement.classList.remove('hidden');
+    //         } else {
+    //             countElement.classList.add('hidden');
+    //         }
+    //     }
+    // }
+    //
+    // function addNotification(message) {
+    //     const list = document.getElementById('notificationList');
+    //     if (list) {
+    //         const noNotificationsElement = list.querySelector('.no-notifications');
+    //         if (noNotificationsElement) {
+    //             list.removeChild(noNotificationsElement);
+    //         }
+    //
+    //         const notificationElement = document.createElement('div');
+    //         notificationElement.classList.add('px-4', 'py-2', 'text-sm', 'text-gray-700', 'hover:bg-gray-100');
+    //         notificationElement.textContent = message;
+    //         list.insertBefore(notificationElement, list.firstChild);
+    //
+    //         if (list.children.length > 5) {
+    //             list.removeChild(list.lastChild);
+    //         }
+    //     }
+    //     unreadCount++;
+    //     updateNotificationCount();
+    // }
 </script>

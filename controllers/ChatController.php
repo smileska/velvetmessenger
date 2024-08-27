@@ -20,6 +20,7 @@ class ChatController
     {
         $this->pdo = $pdo;
         $this->repository = new Repository($pdo);
+
     }
 
     public function sendMessage(Request $request, Response $response): Response
@@ -55,37 +56,62 @@ class ChatController
                 }
             }
 
+            $timestamp = date('Y-m-d H:i:s');
+
             if ($chatroomId) {
-                $stmt = $pdo->prepare('INSERT INTO chatroom_messages (chatroom_id, user_id, message, image_url) VALUES (:chatroom_id, :user_id, :message, :image_url)');
+                $stmt = $pdo->prepare('INSERT INTO chatroom_messages (chatroom_id, user_id, message, image_url, sent_at) VALUES (:chatroom_id, :user_id, :message, :image_url, :sent_at)');
                 $stmt->execute([
                     'chatroom_id' => $chatroomId,
                     'user_id' => $senderId,
                     'message' => $message,
-                    'image_url' => $imageUrl
+                    'image_url' => $imageUrl,
+                    'sent_at' => $timestamp
                 ]);
+                $messageId = $pdo->lastInsertId();
             } else {
-                $stmt = $pdo->prepare('INSERT INTO messages (sender, recipient, message, image_url) VALUES (:sender, :recipient, :message, :image_url)');
-                $stmt->execute([
+                $checkStmt = $pdo->prepare('SELECT id FROM messages WHERE sender = :sender AND recipient = :recipient AND message = :message AND timestamp = :timestamp LIMIT 1');
+                $checkStmt->execute([
                     'sender' => $sender,
                     'recipient' => $recipient,
                     'message' => $message,
-                    'image_url' => $imageUrl
+                    'timestamp' => $timestamp
                 ]);
+
+                if ($checkStmt->rowCount() === 0) {
+                    $stmt = $pdo->prepare('INSERT INTO messages (sender, recipient, message, image_url, timestamp) VALUES (:sender, :recipient, :message, :image_url, :timestamp)');
+                    $stmt->execute([
+                        'sender' => $sender,
+                        'recipient' => $recipient,
+                        'message' => $message,
+                        'image_url' => $imageUrl,
+                        'timestamp' => $timestamp
+                    ]);
+                    $messageId = $pdo->lastInsertId();
+                } else {
+                    $existingMessage = $checkStmt->fetch(PDO::FETCH_ASSOC);
+                    $messageId = $existingMessage['id'];
+                }
             }
 
-            $messageId = $pdo->lastInsertId();
             $pdo->commit();
 
-            $data = [
-                'success' => true,
+            $messageData = [
+                'type' => 'message',
                 'id' => $messageId,
                 'sender' => $sender,
                 'recipient' => $recipient,
                 'message' => $message,
                 'image_url' => $imageUrl,
-                'timestamp' => date('Y-m-d H:i:s')
+                'timestamp' => $timestamp
             ];
-            return $this->jsonResponse($response, $data);
+
+            if ($chatroomId) {
+                $messageData['chatroom_id'] = $chatroomId;
+            }
+
+            $this->sendWebSocketMessage($messageData);
+
+            return $this->jsonResponse($response, ['success' => true] + $messageData);
         }
         catch (PDOException $e) {
             $pdo->rollBack();

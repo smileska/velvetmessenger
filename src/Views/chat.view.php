@@ -53,7 +53,6 @@ require('parts/navbar.php');
             type: 'authentication',
             username: currentUser
         };
-        console.log("Sending authentication message:", authMessage);
         conn.send(JSON.stringify(authMessage));
     };
 
@@ -67,8 +66,7 @@ require('parts/navbar.php');
                 updateReactionDisplay(messageData.message_id, messageData.reaction_type);
             }
             else if (messageData.type === 'message') {
-                if ((messageData.sender === currentUser && messageData.recipient === chatPartner) ||
-                    (messageData.sender === chatPartner && messageData.recipient === currentUser)) {
+                if (messageData.sender !== currentUser) {
                     displayNewMessage(messageData);
                 }
             }
@@ -76,7 +74,6 @@ require('parts/navbar.php');
             console.error("Error processing received message:", error);
         }
     };
-
 
     function displayNewMessage(messageData) {
         console.log("Displaying new message:", messageData);
@@ -131,15 +128,7 @@ require('parts/navbar.php');
             .then(data => {
                 if (data.success) {
                     console.log("Message sent successfully:", data);
-                    displayNewMessage({
-                        type: 'message',
-                        id: data.id,
-                        sender: currentUser,
-                        recipient: recipient,
-                        message: message,
-                        image_url: data.image_url,
-                        timestamp: data.timestamp
-                    });
+                    displayNewMessage(data);
                     messageInput.value = '';
                     imageInput.value = '';
                     document.getElementById('image-preview').classList.add('hidden');
@@ -151,6 +140,7 @@ require('parts/navbar.php');
                 console.error('Error:', error);
             });
     });
+
     document.addEventListener('DOMContentLoaded', function() {
         conn.onopen = function(e) {
             console.log("WebSocket connection established");
@@ -175,8 +165,12 @@ require('parts/navbar.php');
             .then(messages => {
                 const chatBox = document.getElementById('chat-box');
                 chatBox.innerHTML = '';
+                const processedMessageIds = new Set();
                 messages.forEach(message => {
-                    displayNewMessage(message);
+                    if (!processedMessageIds.has(message.id)) {
+                        displayNewMessage(message);
+                        processedMessageIds.add(message.id);
+                    }
                 });
             })
             .catch(error => console.error('Error loading previous messages:', error));
@@ -633,91 +627,91 @@ require('parts/navbar.php');
         document.getElementById('preview-image').src = '';
         document.getElementById('image-preview').classList.add('hidden');
     });
-    let unreadCount = 0;
-    const currentUsername = '<?= isset($_SESSION['username']) ? htmlspecialchars($_SESSION['username']) : ''; ?>';
-
-    document.addEventListener('DOMContentLoaded', function() {
-        setupNotifications();
-    });
-    function setupNotifications() {
-        const bell = document.getElementById('notificationBell');
-        const dropdown = document.getElementById('notificationDropdown');
-
-        if (bell && dropdown) {
-            bell.addEventListener('click', function(event) {
-                event.preventDefault();
-                event.stopPropagation();
-                console.log('Notification bell clicked');
-
-                dropdown.classList.toggle('hidden');
-                if (!dropdown.classList.contains('hidden')) {
-                    unreadCount = 0;
-                    updateNotificationCount();
-                }
-            });
-
-            document.addEventListener('click', function(event) {
-                if (!bell.contains(event.target) && !dropdown.contains(event.target)) {
-                    dropdown.classList.add('hidden');
-                }
-            });
-        }
-
-        updateNotificationCount();
-
-        var conn = new WebSocket('ws://localhost:8080');
-
-        conn.onopen = function(e) {
-            console.log("Connection established!");
-            conn.send(JSON.stringify({
-                type: 'authentication',
-                username: currentUsername
-            }));
-        };
-
-        conn.onmessage = function(e) {
-            console.log("Received message:", e.data);
-            const messageData = JSON.parse(e.data);
-
-            if (messageData.type === 'notification') {
-                addNotification(messageData.content);
-            } else if (messageData.type === 'message' && messageData.recipient === currentUsername) {
-            } else if (messageData.type === 'reaction' && messageData.recipientUsername === currentUsername) {
-                addNotification(`${messageData.senderUsername} reacted to your message`);
-            }
-        };
-    }
-
-    function updateNotificationCount() {
-        const countElement = document.getElementById('notificationCount');
-        if (countElement) {
-            if (unreadCount > 0) {
-                countElement.textContent = unreadCount;
-                countElement.classList.remove('hidden');
-            } else {
-                countElement.classList.add('hidden');
-            }
-        }
-    }
-
-    function addNotification(message) {
-        const list = document.getElementById('notificationList');
-        if (list) {
-            const noNotificationsElement = list.querySelector('.no-notifications');
-            if (noNotificationsElement) {
-                list.removeChild(noNotificationsElement);
-            }
-
-            const notificationElement = document.createElement('div');
-            notificationElement.classList.add('px-4', 'py-2', 'text-sm', 'text-gray-700', 'hover:bg-gray-100');
-            notificationElement.textContent = message;
-            list.insertBefore(notificationElement, list.firstChild);
-
-            if (list.children.length > 5) {
-                list.removeChild(list.lastChild);
-            }
-        }
-        unreadCount++;
-        updateNotificationCount();
-    }
+    //let unreadCount = 0;
+    //const currentUsername = '<?php //= isset($_SESSION['username']) ? htmlspecialchars($_SESSION['username']) : ''; ?>//';
+    //
+    //document.addEventListener('DOMContentLoaded', function() {
+    //    setupNotifications();
+    //});
+    //function setupNotifications() {
+    //    const bell = document.getElementById('notificationBell');
+    //    const dropdown = document.getElementById('notificationDropdown');
+    //
+    //    if (bell && dropdown) {
+    //        bell.addEventListener('click', function(event) {
+    //            event.preventDefault();
+    //            event.stopPropagation();
+    //            console.log('Notification bell clicked');
+    //
+    //            dropdown.classList.toggle('hidden');
+    //            if (!dropdown.classList.contains('hidden')) {
+    //                unreadCount = 0;
+    //                updateNotificationCount();
+    //            }
+    //        });
+    //
+    //        document.addEventListener('click', function(event) {
+    //            if (!bell.contains(event.target) && !dropdown.contains(event.target)) {
+    //                dropdown.classList.add('hidden');
+    //            }
+    //        });
+    //    }
+    //
+    //    updateNotificationCount();
+    //
+    //    var conn = new WebSocket('ws://localhost:8080');
+    //
+    //    conn.onopen = function(e) {
+    //        console.log("Connection established!");
+    //        conn.send(JSON.stringify({
+    //            type: 'authentication',
+    //            username: currentUsername
+    //        }));
+    //    };
+    //
+    //    conn.onmessage = function(e) {
+    //        console.log("Received message:", e.data);
+    //        const messageData = JSON.parse(e.data);
+    //
+    //        if (messageData.type === 'notification') {
+    //            addNotification(messageData.content);
+    //        } else if (messageData.type === 'message' && messageData.recipient === currentUsername) {
+    //        } else if (messageData.type === 'reaction' && messageData.recipientUsername === currentUsername) {
+    //            addNotification(`${messageData.senderUsername} reacted to your message`);
+    //        }
+    //    };
+    //}
+    //
+    //function updateNotificationCount() {
+    //    const countElement = document.getElementById('notificationCount');
+    //    if (countElement) {
+    //        if (unreadCount > 0) {
+    //            countElement.textContent = unreadCount;
+    //            countElement.classList.remove('hidden');
+    //        } else {
+    //            countElement.classList.add('hidden');
+    //        }
+    //    }
+    //}
+    //
+    //function addNotification(message) {
+    //    const list = document.getElementById('notificationList');
+    //    if (list) {
+    //        const noNotificationsElement = list.querySelector('.no-notifications');
+    //        if (noNotificationsElement) {
+    //            list.removeChild(noNotificationsElement);
+    //        }
+    //
+    //        const notificationElement = document.createElement('div');
+    //        notificationElement.classList.add('px-4', 'py-2', 'text-sm', 'text-gray-700', 'hover:bg-gray-100');
+    //        notificationElement.textContent = message;
+    //        list.insertBefore(notificationElement, list.firstChild);
+    //
+    //        if (list.children.length > 5) {
+    //            list.removeChild(list.lastChild);
+    //        }
+    //    }
+    //    unreadCount++;
+    //    updateNotificationCount();
+    //}
 </script>
