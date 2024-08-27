@@ -11,14 +11,14 @@ class Chat implements MessageComponentInterface {
     protected $pdo;
     protected $userConnections;
     protected $chatroomConnections;
-    protected $notifications;
+//    protected $notifications;
 
     public function __construct(PDO $pdo) {
         $this->clients = new \SplObjectStorage;
         $this->pdo = $pdo;
         $this->userConnections = [];
         $this->chatroomConnections = [];
-        $this->notifications = [];
+//        $this->notifications = [];
     }
 
     public function onOpen(ConnectionInterface $conn) {
@@ -39,17 +39,7 @@ class Chat implements MessageComponentInterface {
                 $this->chatroomConnections[$chatroomId] = new \SplObjectStorage;
             }
             $this->chatroomConnections[$chatroomId]->attach($conn);
-            echo "User {$username} joined chatroom {$chatroomId}\n";
         }
-
-        if (isset($this->notifications[$username])) {
-            foreach ($this->notifications[$username] as $notification) {
-                $conn->send(json_encode($notification));
-            }
-            unset($this->notifications[$username]);
-        }
-
-        echo "User {$username} authenticated (Connection {$conn->resourceId})\n";
     }
     public function onMessage(ConnectionInterface $from, $msg) {
         $data = json_decode($msg, true);
@@ -151,42 +141,11 @@ class Chat implements MessageComponentInterface {
     }
 
     private function handlePrivateMessage(ConnectionInterface $from, $data) {
-        $sender = $data['sender'];
         $recipient = $data['recipient'];
 
-        echo "Handling private message from $sender to $recipient\n";
-
-        $stmt = $this->pdo->prepare('INSERT INTO messages (sender, recipient, message, image_url) VALUES (:sender, :recipient, :message, :image_url)');
-        $stmt->execute([
-            'sender' => $sender,
-            'recipient' => $recipient,
-            'message' => $data['message'],
-            'image_url' => $data['image_url'] ?? null
-        ]);
-        $messageId = $this->pdo->lastInsertId();
-
-        $messageToSend = json_encode([
-            'type' => 'message',
-            'id' => $messageId,
-            'sender' => $sender,
-            'recipient' => $recipient,
-            'message' => $data['message'],
-            'image_url' => $data['image_url'] ?? null,
-            'timestamp' => date('Y-m-d H:i:s')
-        ]);
         if (isset($this->userConnections[$recipient])) {
-            echo "Sending message to recipient $recipient\n";
-            $this->userConnections[$recipient]->send($messageToSend);
-        } else {
-            echo "Recipient $recipient not found in connections\n";
-            if (!isset($this->notifications[$recipient])) {
-                $this->notifications[$recipient] = [];
-            }
-            $this->notifications[$recipient][] = json_decode($messageToSend, true);
+            $this->userConnections[$recipient]->send(json_encode($data));
         }
-
-        echo "Sending confirmation to sender $sender\n";
-        $from->send($messageToSend);
     }
 
 
