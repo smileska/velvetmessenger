@@ -253,10 +253,10 @@ require('parts/navbar.php');
         reactionButton.dataset.messageId = messageId;
 
         const svgIcon = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M15.5 11C16.3284 11 17 10.3284 17 9.5C17 8.67157 16.3284 8 15.5 8C14.6716 8 14 8.67157 14 9.5C14 10.3284 14.6716 11 15.5 11Z" fill="currentColor" />
-        <path d="M8.5 11C9.32843 11 10 10.3284 10 9.5C10 8.67157 9.32843 8 8.5 8C7.67157 8 7 8.67157 7 9.5C7 10.3284 7.67157 11 8.5 11Z" fill="currentColor" />
-        <path d="M12 13.5C13.1046 13.5 14 14.3954 14 15.5C14 16.6046 13.1046 17.5 12 17.5C10.8954 17.5 10 16.6046 10 15.5C10 14.3954 10.8954 13.5 12 13.5Z" fill="currentColor" />
-        <path fill-rule="evenodd" clip-rule="evenodd" d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22ZM12 20C16.4183 20 20 16.4183 20 12C20 7.58172 16.4183 4 12 4C7.58172 4 4 7.58172 4 12C4 16.4183 7.58172 20 12 20Z" fill="currentColor" />
+    <path d="M15.5 11C16.3284 11 17 10.3284 17 9.5C17 8.67157 16.3284 8 15.5 8C14.6716 8 14 8.67157 14 9.5C14 10.3284 14.6716 11 15.5 11Z" fill="currentColor" />
+    <path d="M8.5 11C9.32843 11 10 10.3284 10 9.5C10 8.67157 9.32843 8 8.5 8C7.67157 8 7 8.67157 7 9.5C7 10.3284 7.67157 11 8.5 11Z" fill="currentColor" />
+    <path d="M12 13.5C13.1046 13.5 14 14.3954 14 15.5C14 16.6046 13.1046 17.5 12 17.5C10.8954 17.5 10 16.6046 10 15.5C10 14.3954 10.8954 13.5 12 13.5Z" fill="currentColor" />
+    <path fill-rule="evenodd" clip-rule="evenodd" d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22ZM12 20C16.4183 20 20 16.4183 20 12C20 7.58172 16.4183 4 12 4C7.58172 4 4 7.58172 4 12C4 16.4183 7.58172 20 12 20Z" fill="currentColor" />
     </svg>`;
 
         reactionButton.innerHTML = svgIcon;
@@ -271,17 +271,20 @@ require('parts/navbar.php');
         reactionPopup.classList.add('reaction-popup', 'hidden', 'fixed', 'rounded-lg', 'shadow-md', 'p-2', 'z-50');
         reactionPopup.style.transition = 'opacity 0.2s ease-in-out';
 
-
         reactionButton.addEventListener('click', function(event) {
             event.stopPropagation();
             if (reactionPopup.classList.contains('hidden')) {
+                const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
+                if (messageElement) {
+                    const messageBgColor = window.getComputedStyle(messageElement).backgroundColor;
+                    reactionPopup.style.backgroundColor = messageBgColor;
+                }
                 reactionPopup.classList.remove('hidden');
                 positionReactionPopup(reactionButton, reactionPopup);
             } else {
                 reactionPopup.classList.add('hidden');
             }
         });
-
 
         Object.entries(REACTION_TYPES).forEach(([type, emoji]) => {
             const emojiButton = document.createElement('button');
@@ -296,6 +299,8 @@ require('parts/navbar.php');
 
         return reactionContainer;
     }
+
+
     function positionReactionPopup(button, popup) {
         popup.style.visibility = 'hidden';
         popup.style.display = 'block';
