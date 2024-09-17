@@ -13,18 +13,6 @@
                     <img id="sunIcon" src="https://img.icons8.com/ios/50/FFFFFF/sun--v1.png" alt="Sun Icon" class="hidden" />
                 </button>
                 <?php if(isset($_SESSION['username'])) : ?>
-                    <div id="notificationBell" class="relative cursor-pointer notification-bell">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-                            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-                        </svg>
-                        <span id="notificationCount" class="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 transform translate-x-1/2 -translate-y-1/2 bg-red-600 rounded-full hidden">0</span>
-                    </div>
-                    <div id="notificationDropdown" class="hidden absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg overflow-hidden z-20">
-                        <div class="py-2" id="notificationList">
-                            <div class="px-4 py-2 text-sm text-gray-700">No new notifications</div>
-                        </div>
-                    </div>
                     <a href="/profile">
                         <img class="rounded-icon"
                              src="<?= !empty($_SESSION['image']) ? '/' . htmlspecialchars($_SESSION['image']) : "/ui/icons/default.png" ?>"
