@@ -28,7 +28,7 @@
         "ext-json": "*",
         "ext-mysqli": "*",
         "ext-pdo": "*",
-        "aws/aws-sdk-php": "^3.319",
+        "aws/aws-sdk-php": "^3.322",
         "cboden/ratchet": "^0.4.4",
         "guzzlehttp/guzzle": "^7.9",
         "monolog/monolog": "^2.8",
